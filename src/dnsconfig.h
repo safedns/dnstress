@@ -7,6 +7,12 @@
 
 #include "jsmn.h"
 
+#define START_SIZE           32
+#define MAX_NUMBER_OF_TOKENS 100000*2
+
+/* json configuration file fields */
+#define ADDRS_TOK "addrs"
+
 typedef struct dnsconfig_t dnsconfig_t;
 
 typedef enum {
@@ -15,17 +21,21 @@ typedef enum {
     HIGH_VALID,    /* low sized non-valid DNS request */
     HIGH_NONVALID, /* high sized non-valid DNS request */
     SHUFFLE        /* any DNS requests */
-} gen_mode_t;
+} request_mode_t;
 
 struct dnsconfig_t {
     char *configfile;
 
+    size_t addrs_count;
     struct sockaddr_storage *addrs;  /* addresses of dns servers */
-    gen_mode_t mode;                 /* mode for stressing */
-    size_t     wcount;               /* workers count */
+    
+    request_mode_t mode;  /* mode for stressing */
+    size_t wcount;        /* workers count */
 };
 
-int get_pair(jsmntok_t *tokens, char *content, size_t index, char *key, char *value);
+dnsconfig_t * dnsconfig_create(void);
+void          dnsconfig_free(dnsconfig_t * config);
+
 int parse_config(dnsconfig_t *config, char *filename);
 
 #endif /* __DNSCONFIG_H__ */

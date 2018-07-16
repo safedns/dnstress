@@ -45,14 +45,14 @@ void usage(void) {
 
 void parse_args(int argc, char **argv, dnsconfig_t *config) {
     char *ptr        = NULL;
-    char *configfile = "dnstress.json";
+    char *configfile = "./dnstress.json";
 
     for (size_t i = 1; i < argc; i++) {
-        switch(get_value(argv[i])) {
+        switch (get_value(argv[i])) {
             case V_MODE:
                 i++;
-                if (i >= argc) fatal("[-] Error in command line arguments\n");
-                switch(get_value(argv[i])) {
+                if (i >= argc) fatal("[-] Error in command line arguments");
+                switch (get_value(argv[i])) {
                     case LOW_VALID:
                         config->mode = LOW_VALID;
                         break;
@@ -69,16 +69,16 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                         config->mode = SHUFFLE;
                         break;
                     default:
-                        fatal("[-] Invalid mode parameter\n");
+                        fatal("[-] Invalid mode parameter");
                         break;
                 }
                 break;
             case V_WCOUNT:
                 i++;
-                if (i >= argc) fatal("[-] Error in command line arguments\n");
-                if (is_negative_int(argv[i])) fatal("[-] Workers count have to be a positive number\n");
+                if (i >= argc) fatal("[-] Error in command line arguments");
+                if (is_negative_int(argv[i])) fatal("[-] Workers count have to be a positive number");
                 size_t ret = strtoull(argv[i], &ptr, 10);
-                if (ret == 0) fatal("[-] Workers count have to be an int\n");
+                if (ret == 0) fatal("[-] Workers count have to be an int");
                 else 
                     config->wcount = max(ret, MIN_WCOUNT);
                 break;
@@ -87,11 +87,11 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                 break;
             case V_CONF:
                 i++;
-                if (i >= argc) fatal("[-] Error in command line arguments\n");
+                if (i >= argc) fatal("[-] Error in command line arguments");
                 config->configfile = argv[i];
                 break;
             default:
-                fatal("[-] Unexpected parameter\n");
+                fatal("[-] Unexpected parameter");
                 break;
         }
     }

@@ -7,5 +7,6 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <netinet/in.h>
+#include <netdb.h>
 
 #endif

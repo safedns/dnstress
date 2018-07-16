@@ -2,10 +2,13 @@
 #define __JSMN_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define MAX_TOKEN_SIZE 1024
 
 /**
  * JSON type identifier. Basic types are:
@@ -16,9 +19,9 @@ extern "C" {
  */
 typedef enum {
 	JSMN_UNDEFINED = 0,
-	JSMN_OBJECT = 1,
-	JSMN_ARRAY = 2,
-	JSMN_STRING = 3,
+	JSMN_OBJECT    = 1,
+	JSMN_ARRAY     = 2,
+	JSMN_STRING    = 3,
 	JSMN_PRIMITIVE = 4
 } jsmntype_t;
 
@@ -28,8 +31,14 @@ enum jsmnerr {
 	/* Invalid character inside JSON string */
 	JSMN_ERROR_INVAL = -2,
 	/* The string is not a full JSON packet, more bytes expected */
-	JSMN_ERROR_PART = -3
+	JSMN_ERROR_PART  = -3
 };
+
+typedef enum {
+	null_tokens_error  = -4,
+	null_content_error = -5,
+	null_object_error  = -6
+} customerr_t;
 
 /**
  * JSON token description.
@@ -68,6 +77,8 @@ void jsmn_init(jsmn_parser *parser);
  */
 int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
 		jsmntok_t *tokens, unsigned int num_tokens);
+
+int  get_object(jsmntok_t *tokens, char *content, size_t index, char *object);
 
 #ifdef __cplusplus
 }

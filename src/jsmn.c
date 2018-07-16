@@ -1,3 +1,6 @@
+#include <string.h>
+
+#include "utils.h"
 #include "jsmn.h"
 
 /**
@@ -310,4 +313,18 @@ void jsmn_init(jsmn_parser *parser) {
 	parser->pos = 0;
 	parser->toknext = 0;
 	parser->toksuper = -1;
+}
+
+int get_object(jsmntok_t *tokens, char *content, size_t index, char *object) {
+    if (tokens == NULL)  return null_tokens_error;
+    if (content == NULL) return null_content_error;
+    if (object == NULL)  return null_object_error;
+
+    jsmntok_t jobject = tokens[index];
+    size_t object_len = jobject.end - jobject.start;
+
+    strncpy(object, content+jobject.start, object_len);
+
+    object[object_len] = '\x00';
+    return 0;
 }

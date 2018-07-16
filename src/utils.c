@@ -1,4 +1,40 @@
+#include <string.h>
+
 #include "utils.h"
+#include "network.h"
+
+int get_addrfamily(char *addr) {
+    int family = 0;
+    struct addrinfo hint, *res = NULL;
+    memset(&hint, 0, sizeof(hint));
+
+    hint.ai_family = PF_UNSPEC;
+    hint.ai_flags  = AI_NUMERICHOST;
+
+    int ret = getaddrinfo(addr, NULL, &hint, &res);
+    if (ret) {
+        puts("Invalid address");
+        puts(gai_strerror(ret));
+        return 1;
+    }
+    family = res->ai_family;
+    freeaddrinfo(res);
+    return family;
+}
+
+void * xmalloc(size_t size) {
+	void * result = malloc(size);
+	if (result == NULL)
+		fatal("[-] malloc error");
+
+	return result;
+}
+
+void * xmalloc_0(size_t size) {
+    void* result = xmalloc(size);
+	memset(result, 0, size);
+	return result;
+}
 
 bool is_negative_int(char *str) {
     char *ptr;
@@ -13,6 +49,10 @@ bool is_file(char *str) {
 }
 
 int read_file(const char *filename, char **content, size_t *content_size) {
+    if (filename == NULL)     return null_filename;
+    if (*content == NULL)     return null_content;
+    if (content_size == NULL) return null_content_size;
+    
     char ch        = '\x00';
     char *rcontent = *content;
     size_t index   = 0;
@@ -40,7 +80,11 @@ int read_file(const char *filename, char **content, size_t *content_size) {
     return index-1;
 }
 
+void log_info(char *msg) {
+    fprintf(stderr, "%s\n", msg);
+}
+
 void fatal(char *errormsg) {
-    fprintf(stderr, errormsg);
+    fprintf(stderr, "%s\n", errormsg);
     exit(1);
 }

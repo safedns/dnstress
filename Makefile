@@ -7,7 +7,7 @@ LIBS = libevent libcrypto libbsd libldns
 CFLAGS = -Wall -D_GNU_SOURCE `pkg-config --cflags ${LIBS}`
 LDFLAGS = -Wl,--as-needed `pkg-config --libs ${LIBS}`
 
-OBJ_CLIENT = dnstress.o argparser.o utils.o jsmn.o dnsconfig.o
+OBJ_CLIENT = src/dnstress.o src/argparser.o src/utils.o src/jsmn.o src/dnsconfig.o src/worker.o
 
 CPPFLAGS = -DDEBUG
 
