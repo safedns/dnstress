@@ -2,6 +2,7 @@
 dnstress
 .gdb_history
 .vscode
+.idea
 
 # Prerequisites
 *.d
