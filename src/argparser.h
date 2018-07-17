@@ -10,11 +10,11 @@
 
 /* TODO: think about modes a little bit more */
 #define MODE       "--mode"
-#define L_VALID    "low-valid"      /* low sized valid DNS request */
-#define H_VALID    "high-valid"     /* high sized valid DNS request */
-#define L_NONVALID "low-nonvalid"   /* low sized non-valid DNS request */
-#define H_NONVALID "high-nonvalid"  /* high sized non-valid DNS request */
-#define _SHUFFLE   "shuffle"        /* any DNS requests */
+#define U_VALID    "udp-valid"     /* udp valid DNS request */
+#define T_VALID    "tcp-valid"     /* tcp valid DNS request */
+#define U_NONVALID "udp-nonvalid"  /* udp non-valid DNS request */
+#define T_NONVALID "tcp-nonvalid"  /* tcp non-valid DNS request */
+#define _SHUFFLE   "shuffle"       /* any DNS requests */
 
 #define WCOUNT        "--wcount"    /* workers count */
 #define DEFAULT_COUNT 20            /* default workers count */

@@ -1,6 +1,7 @@
 # Compiled dnstress
 dnstress
 .gdb_history
+.vscode
 
 # Prerequisites
 *.d

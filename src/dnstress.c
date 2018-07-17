@@ -13,41 +13,50 @@
 #include "dnstress.h"
 #include "utils.h"
 
-dnstress_t * dnstress_create(dnsconfig_t *config) {
-    dnstress_t *dnstress = xmalloc_0(sizeof(dnstress_t));
+#define MAX_SENDERS 200
+
+struct dnstress_t * dnstress_create(dnsconfig_t *config) {
+    struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
     
     dnstress->config = config;
     dnstress->workers_count = config->addrs_count;
 
-    dnstress->workers = xmalloc_0(sizeof(worker_t) * dnstress->workers_count);
+    dnstress->max_senders = MAX_SENDERS;
+
+    dnstress->workers = xmalloc_0(sizeof(struct worker_t) * dnstress->workers_count);
 
     for (size_t i = 0; i < dnstress->workers_count; i++) {
-        if (worker_init(&dnstress->workers[i], &config->addrs[i]) != 0) {
-            fatal("[-] Error at initialization a worker");
-        }
+        worker_init(dnstress, i);
+        // worker_init(&dnstress->workers[i], &config->addrs[i], MAX_SENDERS, config->mode);
     }
+
+    if ((dnstress->evb = event_base_new()) == NULL)
+		fatal("[-] Failed to create event base");
+    if ((dnstress->pool = thread_pool_init(MAX_THREADS, QUEUE_SIZE)) == NULL)
+        fatal("[-] Failed to create thread pool");
 
     return dnstress;
 }
 
-int dnstress_run(dnstress_t *dnstress) {
+int dnstress_run(struct dnstress_t *dnstress) {
+    /* put all works in a queue */
     for (size_t i = 0; i < dnstress->workers_count; i++) {
-        if (worker_run(&dnstress->workers[i]) != 0) {
-            fatal("[-] Error at running a worker");
-        }
+        thread_pool_add(dnstress->pool, &worker_run, &(dnstress->workers[i]));
     }
     return 0;
 }
 
-int dnstress_free(dnstress_t *dnstress) {
+int dnstress_free(struct dnstress_t *dnstress) {
     if (dnstress == NULL) return 0;
 
     dnsconfig_free(dnstress->config);
     
-    for (size_t i = 0; i < dnstress->workers_count; i++) {
-        worker_clear(&dnstress->workers[i]);
-    }
+    for (size_t i = 0; i < dnstress->workers_count; i++)
+        worker_clear(&(dnstress->workers[i]));
     
+    event_base_free(dnstress->evb);
+    thread_pool_kill(dnstress->pool, complete_shutdown);
+
     free(dnstress->workers);
     free(dnstress);
     
@@ -56,7 +65,7 @@ int dnstress_free(dnstress_t *dnstress) {
 
 int main(int argc, char **argv) {
     dnsconfig_t *config   = NULL;
-    dnstress_t  *dnstress = NULL;
+    struct dnstress_t  *dnstress = NULL;
 
     config = dnsconfig_create();
 
@@ -65,10 +74,6 @@ int main(int argc, char **argv) {
 
     dnstress = dnstress_create(config);
     dnstress_run(dnstress);
-
-#ifdef DEBUG
-    fprintf(stderr, "[*] Mode: %d    Wcount: %zu\n", dnstress->config->mode, dnstress->config->wcount);
-#endif
 
     dnstress_free(dnstress);
 

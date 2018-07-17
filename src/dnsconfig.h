@@ -16,10 +16,10 @@
 typedef struct dnsconfig_t dnsconfig_t;
 
 typedef enum {
-    LOW_VALID,     /* low sized valid DNS request */
-    LOW_NONVALID,  /* high sized valid DNS request */
-    HIGH_VALID,    /* low sized non-valid DNS request */
-    HIGH_NONVALID, /* high sized non-valid DNS request */
+    UDP_VALID,     /* udp valid DNS request */
+    UDP_NONVALID,  /* udp non-valid DNS request */
+    TCP_VALID,     /* tcp valid DNS request */
+    TCP_NONVALID,  /* tcp non-valid DNS request */
     SHUFFLE        /* any DNS requests */
 } request_mode_t;
 

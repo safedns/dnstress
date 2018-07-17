@@ -7,20 +7,28 @@
 #include <event2/event.h>
 
 #include "network.h"
-#include "dnsconfig.h"
-
-typedef struct worker_t worker_t;
+#include "dnstress.h"
 
 struct worker_t {
-    struct sockaddr_storage *server;
     request_mode_t mode;
 
+    struct sockaddr_storage *server;
+
+    struct sender_t *senders;
+    size_t senders_count;
+
+    struct dnstress_t *dnstress;
+};
+
+struct sender_t {
+    size_t index;  /* index in worker's `senders` list */
     int fd;
+    struct sockaddr_storage *server;
     struct event *ev_recv;
 };
 
-int  worker_init(worker_t *worker, struct sockaddr_storage *server);
-int  worker_run(worker_t *worker);
-void worker_clear(worker_t * worker);
+void worker_init(struct dnstress_t *dnstress, size_t index);
+void worker_run(void *arg);
+void worker_clear(struct worker_t * worker);
 
 #endif /* __WORKER_H__ */

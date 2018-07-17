@@ -13,10 +13,10 @@
 static m_entity_t table[] = { { MODE,       V_MODE },
                               { WCOUNT,     V_WCOUNT },
                               { HELP,       V_HELP },
-                              { L_VALID,    LOW_VALID },
-                              { H_VALID,    HIGH_VALID },
-                              { L_NONVALID, LOW_NONVALID },
-                              { H_NONVALID, HIGH_NONVALID },
+                              { U_VALID,    UDP_VALID },
+                              { T_VALID,    TCP_VALID },
+                              { U_NONVALID, UDP_NONVALID },
+                              { T_NONVALID, TCP_NONVALID },
                               { _SHUFFLE,   SHUFFLE },
                               { CONF,       V_CONF } };
 
@@ -32,11 +32,11 @@ static size_t get_value(char *key) {
 void usage(void) {
     fprintf(stderr, "Usage: ./dnstress [--mode m] [--wcount c] [--help]\n");
     fprintf(stderr, "       --mode: mode for traffic generating (low-valid by default). Available modes:\n");
-    fprintf(stderr, "           low-valid:     low sized (UDP) valid packets\n");
-    fprintf(stderr, "           high-valid:    high sized (TCP) valid packets\n");
-    fprintf(stderr, "           low-nonvalid:  low sized (UDP) non-valid (to be blocked) packets\n");
-    fprintf(stderr, "           high-nonvalid: high sized (TCP) non-valid (to be blocked) packets\n");
-    fprintf(stderr, "           any: random packets generating\n");
+    fprintf(stderr, "           udp-valid:    UDP valid packets\n");
+    fprintf(stderr, "           tcp-valid:    TCP valid packets\n");
+    fprintf(stderr, "           udp-nonvalid: UDP non-valid (to be blocked) packets\n");
+    fprintf(stderr, "           tcp-nonvalid: TCP non-valid (to be blocked) packets\n");
+    fprintf(stderr, "           shuffle: random packets generating\n");
     fprintf(stderr, "       --wcount: number of workers (100 by default)\n");
     fprintf(stderr, "       --conf: file with dnstress configuration\n");
     
@@ -53,17 +53,17 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                 i++;
                 if (i >= argc) fatal("[-] Error in command line arguments");
                 switch (get_value(argv[i])) {
-                    case LOW_VALID:
-                        config->mode = LOW_VALID;
+                    case UDP_VALID:
+                        config->mode = UDP_VALID;
                         break;
-                    case LOW_NONVALID:
-                        config->mode = LOW_NONVALID;
+                    case UDP_NONVALID:
+                        config->mode = UDP_NONVALID;
                         break;
-                    case HIGH_VALID:
-                        config->mode = HIGH_VALID;
+                    case TCP_VALID:
+                        config->mode = TCP_VALID;
                         break;
-                    case HIGH_NONVALID:
-                        config->mode = HIGH_NONVALID;
+                    case TCP_NONVALID:
+                        config->mode = TCP_NONVALID;
                         break;
                     case SHUFFLE:
                         config->mode = SHUFFLE;
@@ -96,6 +96,6 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
         }
     }
     if (config->wcount == 0) config->wcount = DEFAULT_COUNT;
-    if (config->mode   == 0) config->mode   = LOW_VALID;
+    if (config->mode   == 0) config->mode   = UDP_VALID;
     if (config->configfile == NULL) config->configfile = configfile;
 }

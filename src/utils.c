@@ -31,7 +31,7 @@ void * xmalloc(size_t size) {
 }
 
 void * xmalloc_0(size_t size) {
-    void* result = xmalloc(size);
+    void * result = xmalloc(size);
 	memset(result, 0, size);
 	return result;
 }

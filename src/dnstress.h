@@ -7,22 +7,24 @@
 #include <event2/event.h>
 
 #include "dnsconfig.h"
+#include "threadpool.h"
 #include "worker.h"
-
-typedef struct dnstress_t dnstress_t;
 
 struct dnstress_t {
     dnsconfig_t *config;
     
-    worker_t    *workers;
-    size_t       workers_count;
+    struct worker_t *workers;
+    size_t    workers_count; /* same as addrs_count */
 
-    struct event *evb;
+    thread_pool_t *pool; /* each worker is a threadpool worker */
+
+    struct event_base *evb; /* event base */
+
+    size_t max_senders;
 };
 
-dnstress_t * dnstress_create(dnsconfig_t *config);
-int dnstress_run   (dnstress_t *dnstress);
-int dnstress_free  (dnstress_t *dnstress);
-
+struct dnstress_t * dnstress_create(dnsconfig_t *config);
+int dnstress_run(struct dnstress_t *dnstress);
+int dnstress_free(struct dnstress_t *dnstress);
 
 #endif /* __DNSTRESS_H__ */
