@@ -16,8 +16,6 @@
 #define T_NONVALID "tcp-nonvalid"  /* tcp non-valid DNS request */
 #define _SHUFFLE   "shuffle"       /* any DNS requests */
 
-#define WCOUNT        "--wcount"    /* workers count */
-#define DEFAULT_COUNT 20            /* default workers count */
 #define MIN_WCOUNT    1
 
 #define CONF "--conf"               /* file with dnstress configuration */

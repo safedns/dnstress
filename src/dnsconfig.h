@@ -10,8 +10,13 @@
 #define START_SIZE           32
 #define MAX_NUMBER_OF_TOKENS 100000*2
 
+#define MAX_WCOUNT 10
+
 /* json configuration file fields */
-#define ADDRS_TOK "addrs"
+#define ADDRS_TOK   "addrs"
+#define WORKERS_TOK "workers"
+
+#define DNS_PORT 53
 
 typedef struct dnsconfig_t dnsconfig_t;
 
@@ -30,7 +35,7 @@ struct dnsconfig_t {
     struct sockaddr_storage *addrs;  /* addresses of dns servers */
     
     request_mode_t mode;  /* mode for stressing */
-    size_t wcount;        /* workers count */
+    size_t workers_count; /* workers count */
 };
 
 dnsconfig_t * dnsconfig_create(void);

@@ -33,8 +33,7 @@ static void senders_setup(struct worker_t *worker) {
         if (connect(sender->fd, (struct sockaddr *)&sstor, sizeof(sstor)) < 0) {
             close(sender->fd);
             continue;
-        }
-        
+        }        
         /* make non-blocking */
         long flags = fcntl(sender->fd, F_GETFL, 0);
 	    if (fcntl(sender->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
@@ -65,6 +64,7 @@ void worker_init(struct dnstress_t *dnstress, size_t index) {
 
 void worker_run(void *arg) {
     struct worker_t * worker = (struct worker_t *) arg;
+    
 }
 
 void worker_clear(struct worker_t * worker) {

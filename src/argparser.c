@@ -6,12 +6,10 @@
 #include "utils.h"
 
 #define V_MODE        1
-#define V_WCOUNT      2
 #define V_HELP        7
 #define V_CONF        9
 
 static m_entity_t table[] = { { MODE,       V_MODE },
-                              { WCOUNT,     V_WCOUNT },
                               { HELP,       V_HELP },
                               { U_VALID,    UDP_VALID },
                               { T_VALID,    TCP_VALID },
@@ -37,14 +35,12 @@ void usage(void) {
     fprintf(stderr, "           udp-nonvalid: UDP non-valid (to be blocked) packets\n");
     fprintf(stderr, "           tcp-nonvalid: TCP non-valid (to be blocked) packets\n");
     fprintf(stderr, "           shuffle: random packets generating\n");
-    fprintf(stderr, "       --wcount: number of workers (100 by default)\n");
     fprintf(stderr, "       --conf: file with dnstress configuration\n");
     
     exit(1);
 }
 
 void parse_args(int argc, char **argv, dnsconfig_t *config) {
-    char *ptr        = NULL;
     char *configfile = "./dnstress.json";
 
     for (size_t i = 1; i < argc; i++) {
@@ -73,15 +69,6 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                         break;
                 }
                 break;
-            case V_WCOUNT:
-                i++;
-                if (i >= argc) fatal("[-] Error in command line arguments");
-                if (is_negative_int(argv[i])) fatal("[-] Workers count have to be a positive number");
-                size_t ret = strtoull(argv[i], &ptr, 10);
-                if (ret == 0) fatal("[-] Workers count have to be an int");
-                else 
-                    config->wcount = max(ret, MIN_WCOUNT);
-                break;
             case V_HELP:
                 usage();
                 break;
@@ -95,7 +82,6 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                 break;
         }
     }
-    if (config->wcount == 0) config->wcount = DEFAULT_COUNT;
     if (config->mode   == 0) config->mode   = UDP_VALID;
     if (config->configfile == NULL) config->configfile = configfile;
 }
