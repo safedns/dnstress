@@ -7,6 +7,7 @@
 #include "dnsconfig.h"
 
 #define HELP "--help"
+#define CONF "--conf" /* file with dnstress configuration */
 
 /* TODO: think about modes a little bit more */
 #define MODE       "--mode"
@@ -16,9 +17,7 @@
 #define T_NONVALID "tcp-nonvalid"  /* tcp non-valid DNS request */
 #define _SHUFFLE   "shuffle"       /* any DNS requests */
 
-#define MIN_WCOUNT    1
-
-#define CONF "--conf"               /* file with dnstress configuration */
+#define MIN_WCOUNT 1
 
 typedef struct m_entity_t m_entity_t;
 

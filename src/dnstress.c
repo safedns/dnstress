@@ -18,8 +18,8 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 
-#include "argparser.h"
 #include "dnstress.h"
+#include "argparser.h"
 #include "utils.h"
 
 #define MAX_SENDERS 1
@@ -28,6 +28,8 @@
 static void worker_signal(evutil_socket_t signal, short events, void *arg) {
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
+
+    /* TODO: PRINT RESULTS */
 }
 
 static void worker_pipe(evutil_socket_t fd, short events, void *arg) {

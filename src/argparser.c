@@ -82,6 +82,6 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                 break;
         }
     }
-    if (config->mode   == 0) config->mode   = UDP_VALID;
+    if (config->mode == 0) config->mode = UDP_VALID;
     if (config->configfile == NULL) config->configfile = configfile;
 }
