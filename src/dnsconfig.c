@@ -18,7 +18,7 @@ static void process_addrs(dnsconfig_t *config, jsmntok_t * tokens,
     
     size_t addrs_len = tokens[__index].size;
     
-    config->addrs = xmalloc_0(addrs_len * sizeof(struct sockaddr_storage));
+    config->addrs = xmalloc_0(addrs_len * sizeof(struct _saddr));
     config->addrs_count = addrs_len;
 
     for (size_t j = 0; j < addrs_len; j++) {
@@ -30,19 +30,22 @@ static void process_addrs(dnsconfig_t *config, jsmntok_t * tokens,
                 memset(&sock4, 0, sizeof(sock4));
                 sock4.sin_family = AF_INET;
                 inet_pton(AF_INET, obj, &(sock4.sin_addr));
-                sock4.sin_port = DNS_PORT; /* TODO: make custom port */
-                memcpy(&(config->addrs[j]), &sock4, sizeof(sock4));
+                sock4.sin_port = htons(DNS_PORT); /* TODO: make custom port */
+                memcpy(&(config->addrs[j].addr), &sock4, sizeof(sock4));
+                config->addrs[j].len = sizeof(struct sockaddr_in);
                 break;
             case AF_INET6:
                 memset(&sock6, 0, sizeof(sock6));
                 sock6.sin6_family = AF_INET6;
                 inet_pton(AF_INET, obj, &(sock6.sin6_addr));
-                sock6.sin6_port = DNS_PORT; /* TODO: make custom port */
-                memcpy(&(config->addrs[j]), &sock6, sizeof(sock6));
+                sock6.sin6_port = htons(DNS_PORT); /* TODO: make custom port */
+                memcpy(&(config->addrs[j].addr), &sock6, sizeof(sock6));
+                config->addrs[j].len = sizeof(struct sockaddr_in6);
                 break;
             default:
                 fatal("[-] Unknown address family");
         }
+        config->addrs[j].repr = strdup(obj);
     }
     *index = __index;
 }
@@ -93,7 +96,13 @@ dnsconfig_t * dnsconfig_create(void) {
 }
 
 void dnsconfig_free(dnsconfig_t * config) {
-    if (config->addrs != NULL) free(config->addrs);
+    if (config == NULL) return;
+
+    for (size_t i = 0; i < config->addrs_count; i++)
+        free(config->addrs[i].repr);
+
+    if (config->addrs != NULL) 
+        free(config->addrs);
     free(config);
 }
 

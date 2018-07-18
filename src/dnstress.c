@@ -22,7 +22,7 @@
 #include "dnstress.h"
 #include "utils.h"
 
-#define MAX_SENDERS 200
+#define MAX_SENDERS 1
 #define MAX_OPEN_FD 1000000
 
 static void worker_signal(evutil_socket_t signal, short events, void *arg) {
@@ -130,9 +130,6 @@ struct dnstress_t * dnstress_create(dnsconfig_t *config, int fd) {
 
     dnstress->workers = xmalloc_0(sizeof(struct worker_t) * dnstress->workers_count);
 
-    for (size_t i = 0; i < dnstress->workers_count; i++)
-        worker_init(dnstress, i);
-
     if ((dnstress->evb = event_base_new()) == NULL)
 		fatal("[-] Failed to create event base");
     
@@ -150,6 +147,9 @@ struct dnstress_t * dnstress_create(dnsconfig_t *config, int fd) {
 
     if (event_add(dnstress->ev_pipe, NULL) < 0)
         fatal("[-] Failed to add pipe event");
+
+    for (size_t i = 0; i < dnstress->workers_count; i++)
+        worker_init(dnstress, i);
 
     if ((dnstress->pool = thread_pool_init(MAX_THREADS, QUEUE_SIZE)) == NULL)
         fatal("[-] Failed to create thread pool");

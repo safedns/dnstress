@@ -1,5 +1,6 @@
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "worker.h"
 #include "utils.h"
@@ -10,27 +11,27 @@ static int get_sock_type(request_mode_t mode) {
     else return SOCK_STREAM;
 }
 
-
 static void sender_reply(evutil_socket_t fd, short events, void *arg) {
     struct sender_t *sender = (struct sender_t *) arg;
 }
 
 static void senders_setup(struct worker_t *worker) {
     int sock_type = get_sock_type(worker->mode);
-    struct sockaddr_storage *sstor = NULL;
+    struct _saddr *sstor    = NULL;
     struct sender_t *sender = NULL;
 
     for (size_t i = 0; i < worker->senders_count; i++) {
-        /* FIXME: some memory corruption */
-    
         sender = &(worker->senders[i]);
         sstor  = worker->server;
 
         sender->index = i;
-        sender->fd    = socket(sstor->ss_family, sock_type, 0);
+        sender->fd    = socket(sstor->addr.ss_family, sock_type, 0);
         
-        if (sender->fd < 0) fatal("[-] Failed to create a sender's socket");
-        if (connect(sender->fd, (struct sockaddr *)&sstor, sizeof(sstor)) < 0) {
+        if (sender->fd < 0)
+            fatal("[-] Failed to create a sender's socket");
+            
+        if (connect(sender->fd, (struct sockaddr *) &(sstor->addr), sstor->len) < 0) {
+            log_info("[-] Worker %d: connection error --> %s:53", worker->index, worker->server->repr);
             close(sender->fd);
             continue;
         }        
@@ -44,6 +45,7 @@ static void senders_setup(struct worker_t *worker) {
         if ((sender->ev_recv = event_new(worker->dnstress->evb, sender->fd, 
             EV_READ | EV_PERSIST, sender_reply, sender)) == NULL)
             fatal("[-] Failed to create sender's event");
+
         if (event_add(sender->ev_recv, NULL) == -1)
             fatal("[-] Failed to add sender's event");
     }

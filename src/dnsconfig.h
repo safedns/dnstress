@@ -28,11 +28,17 @@ typedef enum {
     SHUFFLE        /* any DNS requests */
 } request_mode_t;
 
+struct _saddr {
+    struct sockaddr_storage addr;
+    char *repr;
+    socklen_t len;
+};
+
 struct dnsconfig_t {
     char *configfile;
 
     size_t addrs_count;
-    struct sockaddr_storage *addrs;  /* addresses of dns servers */
+    struct _saddr *addrs;  /* addresses of dns servers */
     
     request_mode_t mode;  /* mode for stressing */
     size_t workers_count; /* workers count */

@@ -28,7 +28,7 @@ static size_t get_value(char *key) {
 }
 
 void usage(void) {
-    fprintf(stderr, "Usage: ./dnstress [--mode m] [--wcount c] [--help]\n");
+    fprintf(stderr, "Usage: ./dnstress [--mode m] [--help]\n");
     fprintf(stderr, "       --mode: mode for traffic generating (low-valid by default). Available modes:\n");
     fprintf(stderr, "           udp-valid:    UDP valid packets\n");
     fprintf(stderr, "           tcp-valid:    TCP valid packets\n");
