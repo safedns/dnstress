@@ -28,7 +28,7 @@ bool is_file(char *str);
 /* reads file and writes its data to content variable */
 int  read_file(const char *filename, char **content, size_t *content_size);
 
-void log_info(char *msg);
-void fatal(char *errormsg); /* TODO: replace it with a more meaningful function */
+void log_info(const char *msg, ...);
+void fatal(const char *msg, ...); /* TODO: replace it with a more meaningful function */
 
 #endif

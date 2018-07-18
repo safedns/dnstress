@@ -10,10 +10,10 @@
 #include "dnstress.h"
 
 struct worker_t {
+    size_t id;
     request_mode_t mode;
 
     struct sockaddr_storage *server;
-
     struct sender_t *senders;
     size_t senders_count;
 

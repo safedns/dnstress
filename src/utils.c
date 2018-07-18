@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <string.h>
 
 #include "utils.h"
@@ -80,11 +81,25 @@ int read_file(const char *filename, char **content, size_t *content_size) {
     return index-1;
 }
 
-void log_info(char *msg) {
-    fprintf(stderr, "%s\n", msg);
+static void __log(const char *msg, va_list ap) {
+    vfprintf(stderr, msg, ap);
+    fprintf(stderr, "\n");
 }
 
-void fatal(char *errormsg) {
-    fprintf(stderr, "%s\n", errormsg);
+void log_info(const char *msg, ...) {
+    va_list ap;
+
+	va_start(ap, msg);
+	__log(msg, ap);
+	va_end(ap);
+}
+
+void fatal(const char *msg, ...) {
+    va_list ap;
+
+	va_start(ap, msg);
+	__log(msg, ap);
+	va_end(ap);
+
     exit(1);
 }

@@ -64,7 +64,6 @@ void worker_init(struct dnstress_t *dnstress, size_t index) {
 
 void worker_run(void *arg) {
     struct worker_t * worker = (struct worker_t *) arg;
-    
 }
 
 void worker_clear(struct worker_t * worker) {
