@@ -10,11 +10,11 @@
 #include "dnstress.h"
 
 struct worker_t {
-    size_t id;
-    request_mode_t mode;
+    size_t index; /* worker's index in a dnstress' list of workers */
+    request_mode_t mode; /* type of requesting */
 
-    struct sockaddr_storage *server;
-    struct sender_t *senders;
+    struct sockaddr_storage *server; /* address of DNS server */
+    struct sender_t *senders; /* subworkers in a worker that send packets */
     size_t senders_count;
 
     struct dnstress_t *dnstress;

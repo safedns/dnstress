@@ -52,6 +52,7 @@ static void senders_setup(struct worker_t *worker) {
 void worker_init(struct dnstress_t *dnstress, size_t index) {
     struct worker_t *worker = &(dnstress->workers[index]);
     
+    worker->index         = index;
     worker->dnstress      = dnstress;
     worker->server        = &(dnstress->config->addrs[index]);
     worker->senders_count = dnstress->max_senders;
@@ -64,6 +65,7 @@ void worker_init(struct dnstress_t *dnstress, size_t index) {
 
 void worker_run(void *arg) {
     struct worker_t * worker = (struct worker_t *) arg;
+    log_info("Worker id: %d", worker->index);
 }
 
 void worker_clear(struct worker_t * worker) {

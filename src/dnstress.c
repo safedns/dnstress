@@ -164,13 +164,14 @@ int dnstress_run(struct dnstress_t *dnstress) {
     if (event_add(dnstress->ev_sigterm, NULL) < 0)
         fatal("[-] Failed to add SIGTERM dnstress event");
 
-    if (event_base_dispatch(dnstress->evb) < 0)
-		fatal("[-] Failed to dispatch dnstress event base");
-    
     /* put all works in a queue */
     for (size_t i = 0; i < dnstress->workers_count; i++) {
         thread_pool_add(dnstress->pool, &worker_run, &(dnstress->workers[i]));
     }
+
+    if (event_base_dispatch(dnstress->evb) < 0)
+		fatal("[-] Failed to dispatch dnstress event base");
+    
     return 0;
 }
 
