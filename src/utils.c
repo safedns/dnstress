@@ -1,8 +1,14 @@
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 
 #include "utils.h"
 #include "network.h"
+#include "log.h"
+
+#define EXIT_ON_NULL(x) do { if ((x) == NULL) \
+	fatalx("%s:%d: fatal: function returned NULL", \
+	__FILE__, __LINE__); } while(0)
 
 int get_addrfamily(char *addr) {
     int family = 0;
@@ -14,19 +20,23 @@ int get_addrfamily(char *addr) {
 
     int ret = getaddrinfo(addr, NULL, &hint, &res);
     if (ret) {
-        puts("Invalid address");
-        puts(gai_strerror(ret));
-        return 1;
+        fatal("invalid address | error: %d", gai_strerror(ret));
+        return -1;
     }
     family = res->ai_family;
     freeaddrinfo(res);
     return family;
 }
 
+int randint(size_t up_bound) {
+    srand(time(NULL));
+    return rand() % up_bound;
+}
+
 void * xmalloc(size_t size) {
 	void * result = malloc(size);
 	if (result == NULL)
-		fatal("[-] malloc error");
+		fatal("malloc error");
 
 	return result;
 }
@@ -79,27 +89,4 @@ int read_file(const char *filename, char **content, size_t *content_size) {
     
     fclose(fp);
     return index-1;
-}
-
-static void __log(const char *msg, va_list ap) {
-    vfprintf(stderr, msg, ap);
-    fprintf(stderr, "\n");
-}
-
-void log_info(const char *msg, ...) {
-    va_list ap;
-
-	va_start(ap, msg);
-	__log(msg, ap);
-	va_end(ap);
-}
-
-void fatal(const char *msg, ...) {
-    va_list ap;
-
-	va_start(ap, msg);
-	__log(msg, ap);
-	va_end(ap);
-
-    exit(1);
 }

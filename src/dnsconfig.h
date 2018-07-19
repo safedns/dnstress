@@ -15,8 +15,16 @@
 /* json configuration file fields */
 #define ADDRS_TOK   "addrs"
 #define WORKERS_TOK "workers"
+#define DOMAINS_TOK "domains"
+
+/* domain's fields in the configuration file */
+#define DOM_NAME    "name"
+#define DOM_BLOCKED "blocked"
+#define DOM_TYPE    "type"
 
 #define DNS_PORT 53
+
+#define PKTSIZE 65536
 
 typedef struct dnsconfig_t dnsconfig_t;
 
@@ -34,6 +42,12 @@ struct _saddr {
     socklen_t len;
 };
 
+struct domain_t {
+    char *name;
+    int blocked;
+    char *type;
+};
+
 struct dnsconfig_t {
     char *configfile;
 
@@ -42,6 +56,9 @@ struct dnsconfig_t {
     
     request_mode_t mode;  /* mode for stressing */
     size_t workers_count; /* workers count */
+
+    struct domain_t *domains;
+    size_t domains_count;
 };
 
 dnsconfig_t * dnsconfig_create(void);

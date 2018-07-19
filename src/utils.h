@@ -19,6 +19,8 @@ typedef enum {
 
 int get_addrfamily(char *addr);
 
+int randint(size_t up_bound);
+
 void * xmalloc(size_t size);
 void * xmalloc_0(size_t size);
 
@@ -27,8 +29,5 @@ bool is_file(char *str);
 
 /* reads file and writes its data to content variable */
 int  read_file(const char *filename, char **content, size_t *content_size);
-
-void log_info(const char *msg, ...);
-void fatal(const char *msg, ...); /* TODO: replace it with a more meaningful function */
 
 #endif

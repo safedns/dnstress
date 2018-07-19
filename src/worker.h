@@ -4,16 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <event2/event.h>
-#include <ldns/ldns.h>
-
 #include "network.h"
+#include "servant.h"
 #include "dnstress.h"
-
-typedef enum {
-    TCP_TYPE,
-    UDP_TYPE
-} sender_type_t;
 
 struct worker_t {
     size_t index; /* worker's index in a dnstress' list of workers */
@@ -21,23 +14,14 @@ struct worker_t {
 
     struct _saddr *server; /* address of DNS server */
     
-    struct sender_t *tcp_senders; /* tcp subworkers in a worker that send packets */
-    size_t tcp_senders_count;
+    struct servant_t *tcp_servants; /* tcp subworkers in a worker that send packets */
+    size_t tcp_serv_count;
 
-    struct sender_t *udp_senders; /* udp subworkers in a worker that send packets */
-    size_t udp_senders_count;
+    struct servant_t *udp_servants; /* udp subworkers in a worker that send packets */
+    size_t udp_serv_count;
 
-    struct dnstress_t *dnstress;
-};
-
-struct sender_t {
-    size_t index;  /* index in worker's `senders` list */
-    int fd;
-    
-    sender_type_t type;
-    
-    struct sockaddr_storage *server;
-    struct event *ev_recv;
+    struct dnstress_t  *dnstress;
+    struct dnsconfig_t *config;
 };
 
 void worker_init(struct dnstress_t *dnstress, size_t index);

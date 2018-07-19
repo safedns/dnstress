@@ -23,7 +23,7 @@ struct dnstress_t {
     struct event *ev_sigterm; /* sigterm event */
     struct event *ev_pipe;
 
-    size_t max_senders;
+    size_t max_servants;
 };
 
 struct process_pipes {

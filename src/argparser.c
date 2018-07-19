@@ -4,6 +4,7 @@
 #include "argparser.h"
 #include "defines.h"
 #include "utils.h"
+#include "log.h"
 
 #define V_MODE        1
 #define V_HELP        7
@@ -47,7 +48,8 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
         switch (get_value(argv[i])) {
             case V_MODE:
                 i++;
-                if (i >= argc) fatal("[-] Error in command line arguments");
+                if (i >= argc)
+                    fatal("error in command line arguments");
                 switch (get_value(argv[i])) {
                     case UDP_VALID:
                         config->mode = UDP_VALID;
@@ -65,7 +67,7 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                         config->mode = SHUFFLE;
                         break;
                     default:
-                        fatal("[-] Invalid mode parameter");
+                        fatal("invalid mode parameter");
                         break;
                 }
                 break;
@@ -74,11 +76,12 @@ void parse_args(int argc, char **argv, dnsconfig_t *config) {
                 break;
             case V_CONF:
                 i++;
-                if (i >= argc) fatal("[-] Error in command line arguments");
+                if (i >= argc)
+                    fatal("error in command line arguments");
                 config->configfile = argv[i];
                 break;
             default:
-                fatal("[-] Unexpected parameter");
+                fatal("unexpected parameter");
                 break;
         }
     }
