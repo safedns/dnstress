@@ -41,6 +41,14 @@ void log_info(const char *msg, ...) {
 	va_end(ap);
 }
 
+void log_warn(const char *msg, ...) {
+    va_list ap;
+
+	va_start(ap, msg);
+	__log(LOG_WARNING, msg, ap);
+	va_end(ap);
+}
+
 void log_debug(const char *msg, ...) {
     va_list ap;
 

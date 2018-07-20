@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 
 #include "jsmn.h"
+#include "phandler.h"
 
 #define START_SIZE           32
 #define MAX_NUMBER_OF_TOKENS 100000*2
@@ -15,10 +16,10 @@
 /* json configuration file fields */
 #define ADDRS_TOK   "addrs"
 #define WORKERS_TOK "workers"
-#define DOMAINS_TOK "domains"
+#define DOMAINS_TOK "queries"
 
 /* domain's fields in the configuration file */
-#define DOM_NAME    "name"
+#define DOM_NAME    "dname"
 #define DOM_BLOCKED "blocked"
 #define DOM_TYPE    "type"
 
@@ -42,12 +43,6 @@ struct _saddr {
     socklen_t len;
 };
 
-struct domain_t {
-    char *name;
-    int blocked;
-    char *type;
-};
-
 struct dnsconfig_t {
     char *configfile;
 
@@ -57,8 +52,8 @@ struct dnsconfig_t {
     request_mode_t mode;  /* mode for stressing */
     size_t workers_count; /* workers count */
 
-    struct domain_t *domains;
-    size_t domains_count;
+    struct query_t *queries;
+    size_t queries_count;
 };
 
 dnsconfig_t * dnsconfig_create(void);

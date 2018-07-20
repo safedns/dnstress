@@ -11,11 +11,11 @@ static void init_domain(dnsconfig_t *config, size_t index, char * key, char *val
     char *ptr = NULL;
     
     if (strcmp(key, DOM_NAME) == 0) {
-        config->domains[index].name = strdup(value);
+        config->queries[index].dname = strdup(value);
     } else if (strcmp(key, DOM_BLOCKED) == 0) {
-        config->domains[index].blocked = strtol(value, &ptr, 10);
+        config->queries[index].blocked = strtol(value, &ptr, 10);
     } else if (strcmp(key, DOM_TYPE) == 0) {
-        config->domains[index].type = strdup(value);
+        config->queries[index].type = strdup(value);
     } else
         fatal("unknown domain's field");
 }
@@ -23,8 +23,8 @@ static void init_domain(dnsconfig_t *config, size_t index, char * key, char *val
 static void validate_config(dnsconfig_t *config) {
     size_t valid = 0, nonvalid = 0;
 
-    for (size_t i = 0; i < config->domains_count; i++) {
-        if (config->domains[i].blocked)
+    for (size_t i = 0; i < config->queries_count; i++) {
+        if (config->queries[i].blocked)
             nonvalid++;
         else
             valid++;
@@ -119,8 +119,8 @@ static void process_domains(dnsconfig_t *config, jsmntok_t *tokens,
         fatal("error in the config file: array expected");
 
     size_t domains_count = tokens[__index++].size;
-    config->domains = xmalloc_0(sizeof(struct domain_t) * domains_count);
-    config->domains_count = domains_count;
+    config->queries = xmalloc_0(sizeof(struct query_t) * domains_count);
+    config->queries_count = domains_count;
 
     /* iterate through domain structures */
     for (size_t i = 0; i < domains_count; i++, __index++) {
@@ -183,13 +183,13 @@ void dnsconfig_free(dnsconfig_t * config) {
     for (size_t i = 0; i < config->addrs_count; i++)
         free(config->addrs[i].repr);
 
-    for (size_t i = 0; i < config->domains_count; i++) {
-        free(config->domains[i].name);
-        free(config->domains[i].type);
+    for (size_t i = 0; i < config->queries_count; i++) {
+        free(config->queries[i].dname);
+        free(config->queries[i].type);
     }
 
     free(config->addrs);
-    free(config->domains);
+    free(config->queries);
     free(config);
 }
 

@@ -9,6 +9,7 @@
 #include "dnsconfig.h"
 #include "threadpool.h"
 #include "worker.h"
+#include "statistic.h"
 
 struct dnstress_t {
     dnsconfig_t *config;
@@ -24,6 +25,8 @@ struct dnstress_t {
     struct event *ev_pipe;
 
     size_t max_servants;
+
+    struct rstats_t *stats;
 };
 
 struct process_pipes {
@@ -35,7 +38,7 @@ enum {
 	WORKER_PROC_FD
 };
 
-struct dnstress_t * dnstress_create(dnsconfig_t *config, int fd);
+struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats, int fd);
 int dnstress_run(struct dnstress_t *dnstress);
 int dnstress_free(struct dnstress_t *dnstress);
 

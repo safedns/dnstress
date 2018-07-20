@@ -23,7 +23,7 @@
 #include "utils.h"
 #include "log.h"
 
-#define MAX_SERVANTS 2
+#define MAX_SERVANTS 200
 #define MAX_OPEN_FD 1000000
 
 #define PROJNAME "dnstress"
@@ -66,7 +66,7 @@ static void master_signal(evutil_socket_t signal, short events, void *arg) {
 	event_base_loopbreak(evb);
 }
 
-static void worker(struct dnsconfig_t *config, int worker_id, struct process_pipes *pipes) {
+static void worker(struct dnsconfig_t *config, struct rstats_t *stats, int worker_id, struct process_pipes *pipes) {
     struct dnstress_t *dnstress = NULL;
     struct rlimit lim;
 
@@ -82,15 +82,15 @@ static void worker(struct dnsconfig_t *config, int worker_id, struct process_pip
     if (setrlimit(RLIMIT_NOFILE, &lim) < 0)
         fatal("failed to set rlimit");
 
-    dnstress = dnstress_create(config, pipes[worker_id].proc_fd[WORKER_PROC_FD]);
+    dnstress = dnstress_create(config, stats, pipes[worker_id].proc_fd[WORKER_PROC_FD]);
 
-    log_info("worker: %d | dnstress created", worker_id);
-    log_info("worker: %d | dnstress running", worker_id);
+    log_info("proc-worker: %d | dnstress created", worker_id);
+    log_info("proc-worker: %d | dnstress running", worker_id);
 
     dnstress_run(dnstress);
     dnstress_free(dnstress);
 
-    log_info("worker:%d  | dnstress closing", worker_id);
+    log_info("proc-worker:%d  | dnstress closing", worker_id);
 
     exit(0);
 }
@@ -135,10 +135,11 @@ static void master(void) {
     event_base_free(evb);
 }
 
-struct dnstress_t * dnstress_create(dnsconfig_t *config, int fd) {
+struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats, int fd) {
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
     
     dnstress->config        = config;
+    dnstress->stats         = stats;
     dnstress->workers_count = config->addrs_count;
     dnstress->max_servants  = MAX_SERVANTS;
 
@@ -207,12 +208,14 @@ int dnstress_free(struct dnstress_t *dnstress) {
 }
 
 int main(int argc, char **argv) {
-    dnsconfig_t *config = NULL;
+    dnsconfig_t    *config = NULL;
+    struct rstats_t *stats = NULL;
 
     log_init(PROJNAME, 0);
     log_info("=================================");
 
     config = dnsconfig_create();
+    stats  = stats_create();
 
     parse_args(argc, argv, config);
     
@@ -232,7 +235,7 @@ int main(int argc, char **argv) {
                 fatal("failed to fork a process");
                 break;
             case 0:
-                worker(config, i, pipes);
+                worker(config, stats, i, pipes);
                 break;
             default:
                 close(pipes[i].proc_fd[WORKER_PROC_FD]);

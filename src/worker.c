@@ -48,14 +48,16 @@ void worker_run(void *arg) {
 
     for (size_t i = 0; i < worker->tcp_serv_count; i++) {
         /* sending DNS requests */
-        log_info("worker: %d | servant: %d/TCP", worker->index, i);
+        log_info("worker: %d | servant: %d/%s", 
+            worker->index, i, type2str(worker->tcp_servants[i].type));
         send_tcp_query(&worker->tcp_servants[i]);
         // tcp_servant_run(&worker->tcp_servants[i]);
     }
 
     for (size_t i = 0; i < worker->udp_serv_count; i++) {
         /* sending DNS requests */
-        log_info("worker: %d | servant: %d/UDP", worker->index, i);
+        log_info("worker: %d | servant: %d/%s",
+            worker->index, i, type2str(worker->udp_servants[i].type));
         send_udp_query(&worker->udp_servants[i]);
         // udp_servant_run(&worker->udp_servants[i]);
     }

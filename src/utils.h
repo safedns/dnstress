@@ -5,6 +5,13 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "log.h"
+#include "servant.h"
+
+#define EXIT_ON_NULL(x) do { if ((x) == NULL) \
+	fatal("%s:%d: fatal: function returned NULL", \
+	__FILE__, __LINE__); } while(0)
+
 typedef enum {
     open_file_error     = -1,
     realloc_failed      = -2,
@@ -26,6 +33,8 @@ void * xmalloc_0(size_t size);
 
 bool is_negative_int(char *str);
 bool is_file(char *str); 
+
+const char * type2str(servant_type_t type);
 
 /* reads file and writes its data to content variable */
 int  read_file(const char *filename, char **content, size_t *content_size);

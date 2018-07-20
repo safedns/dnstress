@@ -6,10 +6,6 @@
 #include "network.h"
 #include "log.h"
 
-#define EXIT_ON_NULL(x) do { if ((x) == NULL) \
-	fatalx("%s:%d: fatal: function returned NULL", \
-	__FILE__, __LINE__); } while(0)
-
 int get_addrfamily(char *addr) {
     int family = 0;
     struct addrinfo hint, *res = NULL;
@@ -57,6 +53,17 @@ bool is_negative_int(char *str) {
 bool is_file(char *str) {
     /* TODO: implement this function */
     return false;
+}
+
+const char * type2str(servant_type_t type) {
+    switch (type) {
+        case UDP_TYPE:
+            return UDP;
+        case TCP_TYPE:
+            return TCP;
+        default:
+            return UNDEFINED;
+    }
 }
 
 int read_file(const char *filename, char **content, size_t *content_size) {

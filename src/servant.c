@@ -39,6 +39,11 @@ static op_func get_reply_callback(servant_type_t type) {
 }
 
 void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
+    /* TODO: add error codes */
+    if (worker == NULL) return;
+    if (index < 0 || index >= worker->dnstress->max_servants) return;
+    if (type == CLEANED) return;
+    
     int sock_type = get_sock_type(type);
     struct _saddr *sstor    = NULL;
     struct servant_t *servant = NULL;
@@ -49,6 +54,12 @@ void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
     servant->config = worker->config;
     servant->index  = index;
     servant->fd     = socket(sstor->addr.ss_family, sock_type, 0);
+    servant->server = sstor;
+    servant->type   = type;
+    
+    servant->worker_base = worker;
+
+    servant->buffer = ldns_buffer_new(PKTSIZE);
     
     if (servant->fd < 0)
         fatal("failed to create a servant's socket");
@@ -73,6 +84,21 @@ void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
         fatal("failed to add servant's event");
 
     return;
+}
+
+void servant_clear(struct servant_t *servant) {
+    close(servant->fd);
+    event_free(servant->ev_recv);
+
+    ldns_buffer_free(servant->buffer);
+    
+    servant->config  = NULL;
+    servant->server  = NULL;
+    servant->ev_recv = NULL;
+    
+    servant->index  = -1;
+    servant->fd     = -1;
+    servant->type   = CLEANED;
 }
 
 void tcp_servant_run(struct servant_t *servant) {

@@ -10,9 +10,14 @@
 
 struct worker_t;
 
+#define TCP       "TCP"
+#define UDP       "UDP"
+#define UNDEFINED "UNDEFINED"
+
 typedef enum {
     TCP_TYPE,
-    UDP_TYPE
+    UDP_TYPE,
+    CLEANED
 } servant_type_t;
 
 struct servant_t {
@@ -21,14 +26,18 @@ struct servant_t {
     
     servant_type_t type;
     
-    struct sockaddr_storage *server;
-    struct event *ev_recv;
+    struct _saddr *server;
+    struct event  *ev_recv;
 
     struct dnsconfig_t *config;
+    struct worker_t    *worker_base;
+
+    ldns_buffer *buffer;
 };
 
 /* FIXME: change function's arguments */
 void servant_init(struct worker_t *worker, size_t index, servant_type_t type);
+void servant_clear(struct servant_t *servant);
 
 void tcp_servant_run(struct servant_t *servant);
 void udp_servant_run(struct servant_t *servant);
