@@ -29,20 +29,27 @@ void send_udp_query(struct servant_t *servant) {
             servant->worker_base->index, type2str(servant->type), servant->index);
         return;
     }
+    gstats(servant)->n_sent_udp++; /* FIXME: lock */
 }
 
 void recv_udp_reply(evutil_socket_t fd, short events, void *arg) {
     struct servant_t *servant = (struct servant_t *) arg;
-    struct rstats_t  *stats   = servant->worker_base->dnstress->stats;
+    struct rstats_t  *stats   = gstats(servant);
 
     size_t   answer_size = 0;
     uint8_t *answer      = NULL;
 
     answer = ldns_udp_read_wire(servant->fd, &answer_size, NULL, NULL);
-    if (answer == NULL)
-        log_warn("worker: %d | servant: %d/%s | received empty answer",
-            servant->worker_base->index, type2str(servant->type), servant->index);
     
+    if (answer == NULL) {
+        log_warn("worker: %d | servant: %d/%s | received empty answer",
+            servant->worker_base->index, servant->index, type2str(servant->type));
+        return;
+    }
+
+    gstats(servant)->n_recv_udp++; /* FIXME: lock */
     ldns_buffer_new_frm_data(servant->buffer, answer, answer_size);
+    
     stats_update_buf(stats, servant->buffer);
+    // __stats_update_servant(stats, servant);
 }

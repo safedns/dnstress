@@ -28,15 +28,9 @@
 
 #define PROJNAME "dnstress"
 
-void print_results(struct dnstress_t *dnstress) {
-    /* TODO: PRINT RESULTS */
-}
-
 static void worker_signal(evutil_socket_t signal, short events, void *arg) {
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
-
-    print_results(dnstress);
 }
 
 static void worker_pipe(evutil_socket_t fd, short events, void *arg) {
@@ -192,16 +186,23 @@ int dnstress_run(struct dnstress_t *dnstress) {
 
 int dnstress_free(struct dnstress_t *dnstress) {
     if (dnstress == NULL) return 0;
-
-    dnsconfig_free(dnstress->config);
-    
     for (size_t i = 0; i < dnstress->workers_count; i++)
         worker_clear(&(dnstress->workers[i]));
     
     event_base_free(dnstress->evb);
     thread_pool_kill(dnstress->pool, complete_shutdown);
 
+    event_free(dnstress->ev_sigint);
+    event_free(dnstress->ev_sigterm);
+    event_free(dnstress->ev_pipe);
+
     free(dnstress->workers);
+
+    dnstress->config  = NULL;
+    dnstress->workers = NULL;
+    dnstress->pool    = NULL;
+    dnstress->stats   = NULL;
+
     free(dnstress);
     
     return 0;
@@ -244,7 +245,11 @@ int main(int argc, char **argv) {
 
     master();
     
+    print_stats(stats);
+
     free(pipes);
+    dnsconfig_free(config);
+    stats_free(stats);
 
     return 0;
 }

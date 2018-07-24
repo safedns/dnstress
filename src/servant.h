@@ -42,4 +42,6 @@ void servant_clear(struct servant_t *servant);
 void tcp_servant_run(struct servant_t *servant);
 void udp_servant_run(struct servant_t *servant);
 
+struct rstats_t * gstats(struct servant_t *servant);
+
 #endif
