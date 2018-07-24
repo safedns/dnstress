@@ -7,7 +7,10 @@
 #include "servant.h"
 #include "phandler.h"
 
+/* takes into account a sent packet in stats */
 void send_udp_query(struct servant_t *servant);
+
+/* takes into account a received packet in stats */
 void recv_udp_reply(evutil_socket_t fd, short events, void *arg);
 
 #endif /* __UDP_H__ */

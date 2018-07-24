@@ -50,5 +50,5 @@ void query_create(struct dnsconfig_t * config, ldns_buffer *buffer) {
 }
 
 void reply_process(ldns_buffer *buffer) {
-
+    /* FIXME: useless?? */
 }

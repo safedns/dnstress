@@ -96,7 +96,7 @@ void servant_clear(struct servant_t *servant) {
     servant->server  = NULL;
     servant->ev_recv = NULL;
     
-    servant->index  = -1;
+    servant->index  = 0;
     servant->fd     = -1;
     servant->type   = CLEANED;
 }
@@ -107,4 +107,8 @@ void tcp_servant_run(struct servant_t *servant) {
 
 void udp_servant_run(struct servant_t *servant) {
     send_udp_query(servant);       
+}
+
+struct rstats_t * gstats(struct servant_t *servant) {
+    return servant->worker_base->dnstress->stats;
 }

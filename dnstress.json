@@ -1,6 +1,6 @@
 {
     "addrs": [ "127.0.0.2", "127.0.0.3", "127.0.0.4", "127.0.0.5" ],
-    "workers": 2,
+    "workers": 1,
     "queries": [
         { "dname": "google.com", "blocked": 0, "type": "A" },
         { "dname": "vk.com",     "blocked": 1, "type": "A" }
