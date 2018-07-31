@@ -2,6 +2,7 @@
 #define __SERVANT_H__
 
 #include <stdio.h>
+#include <pthread.h>
 
 #include <event2/event.h>
 #include <ldns/ldns.h>

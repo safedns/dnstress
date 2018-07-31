@@ -2,6 +2,7 @@
 #define __STATISTIC_H__
 
 #include <stdio.h>
+#include <pthread.h>
 
 #include <ldns/ldns.h>
 #include "servant.h"
@@ -26,6 +27,8 @@ struct rstats_t {
     size_t n_nxrrset;
     size_t n_notauth;
     size_t n_notzone;
+
+    pthread_mutex_t lock;
 };
 
 struct rstats_t * stats_create(void);
@@ -36,6 +39,10 @@ void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant);
 void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer);
 void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt);
 
+void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2);
+
 void print_stats(struct rstats_t *stats);
+
+void inc_rsts_fld(struct rstats_t *stats, size_t *field);
 
 #endif /* __STATISTIC_H__ */

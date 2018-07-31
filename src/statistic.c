@@ -3,10 +3,15 @@
 
 struct rstats_t * stats_create(void) {
     struct rstats_t *stats = (struct rstats_t *) xmalloc_0(sizeof(struct rstats_t));
+    if (pthread_mutex_init(&(stats->lock), NULL) != 0) {
+        free(stats);
+        return NULL;
+    }
     return stats;
 }
 
 void stats_free(struct rstats_t *stats) {
+    pthread_mutex_destroy(&(stats->lock));
     free(stats);
 }
 
@@ -36,39 +41,59 @@ void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt) {
     /* TODO: too crappy code have to be changed */
     switch (ldns_pkt_get_rcode(pkt)) {
         case LDNS_RCODE_NOERROR:
-            stats->n_noerr++;
+            inc_rsts_fld(stats, &(stats->n_noerr));
             break;
         case LDNS_RCODE_FORMERR:
-            stats->n_formerr++;
+            inc_rsts_fld(stats, &(stats->n_formerr));
             break;
         case LDNS_RCODE_SERVFAIL:
-            stats->n_servfail++;
+            inc_rsts_fld(stats, &(stats->n_servfail));
             break;
         case LDNS_RCODE_NXDOMAIN:
-            stats->n_nxdomain++;
+            inc_rsts_fld(stats, &(stats->n_nxdomain));
             break;
         case LDNS_RCODE_NOTIMPL:
-            stats->n_notimpl++;
+            inc_rsts_fld(stats, &(stats->n_notimpl));
             break;
         case LDNS_RCODE_REFUSED:
-            stats->n_refused++;
+            inc_rsts_fld(stats, &(stats->n_refused));
             break;
         case LDNS_RCODE_YXDOMAIN:
-            stats->n_yxdomain++;
+            inc_rsts_fld(stats, &(stats->n_yxdomain));
             break;
         case LDNS_RCODE_YXRRSET:
-            stats->n_yxrrset++;
+            inc_rsts_fld(stats, &(stats->n_yxrrset));
             break;
         case LDNS_RCODE_NXRRSET:
-            stats->n_nxrrset++;
+            inc_rsts_fld(stats, &(stats->n_nxrrset));
             break;
         case LDNS_RCODE_NOTAUTH:
-            stats->n_notauth++;
+            inc_rsts_fld(stats, &(stats->n_notauth));
             break;
         case LDNS_RCODE_NOTZONE:
-            stats->n_notzone++;
+            inc_rsts_fld(stats, &(stats->n_notzone));
             break;
     }
+}
+
+void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2) {
+    stats1->n_sent_udp += stats2->n_sent_udp;
+    stats1->n_recv_udp += stats2->n_recv_udp;
+
+    stats1->n_sent_tcp += stats2->n_sent_tcp;
+    stats1->n_recv_tcp += stats2->n_recv_tcp;
+
+    stats1->n_noerr    += stats2->n_noerr;
+    stats1->n_formerr  += stats2->n_formerr;
+    stats1->n_servfail += stats2->n_servfail;
+    stats1->n_nxdomain += stats2->n_nxdomain;
+    stats1->n_notimpl  += stats2->n_notimpl;
+    stats1->n_refused  += stats2->n_refused;
+    stats1->n_yxdomain += stats2->n_yxdomain;
+    stats1->n_yxrrset  += stats2->n_yxrrset;
+    stats1->n_nxrrset  += stats2->n_nxrrset;
+    stats1->n_notauth  += stats2->n_notauth;
+    stats1->n_notzone  += stats2->n_notzone;
 }
 
 void print_stats(struct rstats_t *stats) {
@@ -92,4 +117,14 @@ void print_stats(struct rstats_t *stats) {
     fprintf(stderr, "     [-] REFUSED:         %zu\n", stats->n_refused);
     fprintf(stderr, "\n");
     fprintf(stderr, "Bye!\n");
+}
+
+void inc_rsts_fld(struct rstats_t *stats, size_t *field) {
+    if (pthread_mutex_lock(&(stats->lock)) != 0)
+        fatal("%s: mutex lock error", __func__);
+    
+    *field = *field + 1;
+
+    if (pthread_mutex_unlock(&(stats->lock)) != 0)
+        fatal("%s: mutex unlock error", __func__);
 }
