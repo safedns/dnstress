@@ -8,33 +8,54 @@
 
 typedef void (*op_func)(evutil_socket_t, short, void *);
 
-static struct servant_t * get_servants(struct worker_t *worker, servant_type_t type) {
-    if (type == TCP_TYPE)
-        return worker->tcp_servants;
-    else if (type == UDP_TYPE)
-        return worker->udp_servants;
-    else
-        fatal("unknown servant type");
+static struct servant_t *
+get_servants(struct worker_t *worker, servant_type_t type)
+{    
+    switch (type) {
+        case TCP_TYPE:
+            return worker->tcp_servants;
+            break;
+        case UDP_TYPE:
+            return worker->udp_servants;
+            break;
+        default:
+            fatal("unknown servant type");
+            break;
+    }   
     return NULL;
 }
 
-static int get_sock_type(servant_type_t type) {
-    if (type == UDP_TYPE)
-        return SOCK_DGRAM;
-    else if (type == TCP_TYPE)
-        return SOCK_STREAM;
-    else
-        fatal("unknown servant type");
+static int
+get_sock_type(servant_type_t type)
+{
+    switch (type) {
+        case UDP_TYPE:
+            return SOCK_DGRAM;
+            break;
+        case TCP_TYPE:
+            return SOCK_STREAM;
+            break;
+        default:
+            fatal("unknown servant type");
+            break;
+    }
     return -1;
 }
 
-static op_func get_reply_callback(servant_type_t type) {
-    if (type == TCP_TYPE)
-        return recv_tcp_reply;
-    else if (type == UDP_TYPE)
-        return recv_udp_reply;
-    else
-        fatal("unknown servant type");
+static op_func
+get_reply_callback(servant_type_t type)
+{
+    switch (type) {
+        case TCP_TYPE:
+            return recv_tcp_reply;
+            break;
+        case UDP_TYPE:
+            return recv_udp_reply;
+            break;
+        default:
+            fatal("unknown servant type");
+            break;
+    }
     return NULL;
 }
 
@@ -45,7 +66,7 @@ void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
     if (type == CLEANED) return;
     
     int sock_type = get_sock_type(type);
-    struct _saddr *sstor    = NULL;
+    struct _saddr *sstor      = NULL;
     struct servant_t *servant = NULL;
 
     servant = &(get_servants(worker, type)[index]); /* TODO: make it simplier */

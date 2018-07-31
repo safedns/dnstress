@@ -28,17 +28,51 @@
 
 #define PROJNAME "dnstress"
 
-static void worker_signal(evutil_socket_t signal, short events, void *arg) {
+static void
+send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
+    size_t worker_id)
+{
+    ssize_t wrote = write(pipes[worker_id].proc_fd[WORKER_PROC_FD], stats, sizeof(*stats));
+
+    log_info("proc-worker: %zu | wrote %ld bytes to master", worker_id, wrote);
+}
+
+static void
+recv_stats_master(evutil_socket_t fd, short events, void *arg)
+{
+    struct rstats_t *stats   = (struct rstats_t *) arg;
+    struct rstats_t *r_stats = stats_create();
+
+    ssize_t recv = read(fd, r_stats, sizeof(*r_stats));
+
+    log_info("master: received %ld bytes from a worker", recv);
+
+    stats_update_stats(stats, r_stats);
+    
+    stats_free(r_stats);
+}
+
+static void
+pworker_signal(evutil_socket_t signal, short events, void *arg)
+{
+    log_info("proc-worker: got fatal signal %d", signal);
+    
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
 }
 
-static void worker_pipe(evutil_socket_t fd, short events, void *arg) {
+static void
+pworker_pipe(evutil_socket_t fd, short events, void *arg)
+{
+    log_info("proc-worker: EOF on a master pipe, terminating");
+    
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
 }
 
-static void master_signal(evutil_socket_t signal, short events, void *arg) {
+static void
+master_signal(evutil_socket_t signal, short events, void *arg)
+{
     struct event_base *evb = (struct event_base *) arg;
 	pid_t pid;
 
@@ -60,7 +94,10 @@ static void master_signal(evutil_socket_t signal, short events, void *arg) {
 	event_base_loopbreak(evb);
 }
 
-static void worker(struct dnsconfig_t *config, struct rstats_t *stats, int worker_id, struct process_pipes *pipes) {
+static void
+pworker(struct dnsconfig_t *config, int worker_id,
+    struct process_pipes *pipes)
+{
     struct dnstress_t *dnstress = NULL;
     struct rlimit lim;
 
@@ -76,24 +113,34 @@ static void worker(struct dnsconfig_t *config, struct rstats_t *stats, int worke
     if (setrlimit(RLIMIT_NOFILE, &lim) < 0)
         fatal("failed to set rlimit");
 
-    dnstress = dnstress_create(config, stats, pipes[worker_id].proc_fd[WORKER_PROC_FD]);
+    dnstress = dnstress_create(config, pipes[worker_id].proc_fd[WORKER_PROC_FD]);
 
     log_info("proc-worker: %d | dnstress created", worker_id);
     log_info("proc-worker: %d | dnstress running", worker_id);
 
     dnstress_run(dnstress);
+    
+    send_stats_worker(dnstress->stats, pipes, worker_id);
+    
     dnstress_free(dnstress);
 
-    log_info("proc-worker:%d  | dnstress closing", worker_id);
+    log_info("proc-worker: %d  | dnstress closing", worker_id);
+    fprintf(stderr, "process worker is exiting\n");
 
     exit(0);
 }
 
-static void master(void) {
+static void
+master(struct process_pipes *pipes, size_t pipes_count)
+{
     struct event_base *evb   = NULL;
     struct event *ev_sigint  = NULL;
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
+    
+    struct event **ev_pipes  = xmalloc_0(sizeof(struct event *) * pipes_count);
+
+    struct rstats_t *stats = stats_create();
 
     if ((evb = event_base_new()) == NULL)
         fatal("failed to create master event base");
@@ -110,6 +157,15 @@ static void master(void) {
         EV_SIGNAL | EV_PERSIST, master_signal, evb)) == NULL)
         fatal("failed to create SIGCHLD master event");
 
+    for (size_t i = 0; i < pipes_count; i++) {
+        if ((ev_pipes[i] = event_new(evb, pipes[i].proc_fd[MASTER_PROC_FD],
+            EV_READ | EV_PERSIST, recv_stats_master, stats)) == NULL)
+            fatal("failed to create pipe master event");
+        
+        if (event_add(ev_pipes[i], NULL) < 0)
+            fatal("failed to add pipe master event");
+    }
+
     if (event_add(ev_sigint, NULL) < 0)
         fatal("failed to add SIGINT master event");
 
@@ -122,20 +178,36 @@ static void master(void) {
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
     
+    fprintf(stderr, "master is closing\n");
+
+    print_stats(stats);
+    
+    stats_free(stats);
+
     event_free(ev_sigint);
     event_free(ev_sigterm);
     event_free(ev_sigchld);
+    
+    for (size_t i = 0; i < pipes_count; i++)
+        event_free(ev_pipes[i]);
 
     event_base_free(evb);
+
+    free(ev_pipes);
 }
 
-struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats, int fd) {
+struct dnstress_t *
+dnstress_create(dnsconfig_t *config, int fd)
+{
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
     
     dnstress->config        = config;
-    dnstress->stats         = stats;
+    dnstress->stats         = stats_create();
     dnstress->workers_count = config->addrs_count;
     dnstress->max_servants  = MAX_SERVANTS;
+
+    if (dnstress->stats == NULL)
+        fatal("error while creating stats");
 
     dnstress->workers = xmalloc_0(sizeof(struct worker_t) * dnstress->workers_count);
 
@@ -143,15 +215,15 @@ struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats,
 		fatal("failed to create event base");
     
     if ((dnstress->ev_sigint = event_new(dnstress->evb, SIGINT,
-	    EV_SIGNAL | EV_PERSIST, worker_signal, dnstress)) == NULL)
+	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
 		fatal("failed to create SIGINT signal event");
 
 	if ((dnstress->ev_sigterm = event_new(dnstress->evb, SIGTERM,
-	    EV_SIGNAL | EV_PERSIST, worker_signal, dnstress)) == NULL)
+	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
 		fatal("failed to create SIGTERM signal event");
 
-    if ((dnstress->ev_pipe = event_new(dnstress->evb, fd, 
-        EV_READ | EV_PERSIST, worker_pipe, dnstress)) == NULL)
+    if ((dnstress->ev_pipe = event_new(dnstress->evb, fd,
+        EV_READ | EV_PERSIST, pworker_pipe, dnstress)) == NULL)
         fatal("failed to create pipe event");
 
     if (event_add(dnstress->ev_pipe, NULL) < 0)
@@ -166,7 +238,9 @@ struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats,
     return dnstress;
 }
 
-int dnstress_run(struct dnstress_t *dnstress) {
+int
+dnstress_run(struct dnstress_t *dnstress)
+{
     if (event_add(dnstress->ev_sigint, NULL) < 0)
         fatal("failed to add SIGINT dnstress event");
 
@@ -184,13 +258,16 @@ int dnstress_run(struct dnstress_t *dnstress) {
     return 0;
 }
 
-int dnstress_free(struct dnstress_t *dnstress) {
+int
+dnstress_free(struct dnstress_t *dnstress)
+{
     if (dnstress == NULL) return 0;
     for (size_t i = 0; i < dnstress->workers_count; i++)
         worker_clear(&(dnstress->workers[i]));
     
     event_base_free(dnstress->evb);
     thread_pool_kill(dnstress->pool, complete_shutdown);
+    stats_free(dnstress->stats);
 
     event_free(dnstress->ev_sigint);
     event_free(dnstress->ev_sigterm);
@@ -208,15 +285,18 @@ int dnstress_free(struct dnstress_t *dnstress) {
     return 0;
 }
 
-int main(int argc, char **argv) {
-    dnsconfig_t    *config = NULL;
-    struct rstats_t *stats = NULL;
+int
+main(int argc, char **argv)
+{
+    dnsconfig_t *config = NULL;
 
     log_init(PROJNAME, 0);
     log_info("=================================");
 
     config = dnsconfig_create();
-    stats  = stats_create();
+
+    if (config == NULL)
+        fatal("error while creating dnsconfig");
 
     parse_args(argc, argv, config);
     
@@ -236,20 +316,20 @@ int main(int argc, char **argv) {
                 fatal("failed to fork a process");
                 break;
             case 0:
-                worker(config, stats, i, pipes);
+                pworker(config, i, pipes);
                 break;
             default:
                 close(pipes[i].proc_fd[WORKER_PROC_FD]);
+                break;
         }
     }
 
-    master();
-    
-    print_stats(stats);
+    fprintf(stderr, "[+] process workers are running\n");
+
+    master(pipes, config->workers_count);
 
     free(pipes);
     dnsconfig_free(config);
-    stats_free(stats);
 
     return 0;
 }

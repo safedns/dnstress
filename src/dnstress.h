@@ -38,7 +38,7 @@ enum {
 	WORKER_PROC_FD
 };
 
-struct dnstress_t * dnstress_create(dnsconfig_t *config, struct rstats_t *stats, int fd);
+struct dnstress_t * dnstress_create(dnsconfig_t *config, int fd);
 int dnstress_run(struct dnstress_t *dnstress);
 int dnstress_free(struct dnstress_t *dnstress);
 

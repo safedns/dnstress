@@ -64,7 +64,7 @@ static void process_addrs(dnsconfig_t *config, jsmntok_t * tokens,
     for (size_t j = 0; j < addrs_len; j++) {
         __index++;
         get_object(tokens, content, __index, obj);
-        /* FIXME: replace this switch with more flexible variant */
+        /* FIXME: replace this switch with more flexible variant (using casts) */
         switch (get_addrfamily(obj)) {
             case AF_INET:
                 memset(&sock4, 0, sizeof(sock4));
