@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <grp.h>
 #include <pwd.h>
+#include <alloca.h>
+#include <errno.h>
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -33,7 +35,7 @@ send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
     size_t worker_id)
 {
     ssize_t wrote = write(pipes[worker_id].proc_fd[WORKER_PROC_FD], stats, sizeof(*stats));
-
+ 
     log_info("proc-worker: %zu | wrote %ld bytes to master", worker_id, wrote);
 }
 
@@ -91,6 +93,9 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 		    fatal("unexpected signal received");
 		    break;
 	}
+
+    /* TODO: kill child processes explicitly */
+
 	event_base_loopbreak(evb);
 }
 
@@ -131,14 +136,14 @@ pworker(struct dnsconfig_t *config, int worker_id,
 }
 
 static void
-master(struct process_pipes *pipes, size_t pipes_count)
+master(const struct process_pipes *pipes, const size_t pipes_count)
 {
     struct event_base *evb   = NULL;
     struct event *ev_sigint  = NULL;
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
     
-    struct event **ev_pipes  = xmalloc_0(sizeof(struct event *) * pipes_count);
+    struct event **ev_pipes  = alloca(sizeof(struct event *) * pipes_count);
 
     struct rstats_t *stats = stats_create();
 
@@ -161,9 +166,9 @@ master(struct process_pipes *pipes, size_t pipes_count)
         if ((ev_pipes[i] = event_new(evb, pipes[i].proc_fd[MASTER_PROC_FD],
             EV_READ | EV_PERSIST, recv_stats_master, stats)) == NULL)
             fatal("failed to create pipe master event");
-        
+
         if (event_add(ev_pipes[i], NULL) < 0)
-            fatal("failed to add pipe master event");
+            fatal("failed to add pipe master event | errno: %d", errno);
     }
 
     if (event_add(ev_sigint, NULL) < 0)
@@ -177,8 +182,6 @@ master(struct process_pipes *pipes, size_t pipes_count)
 
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
-    
-    fprintf(stderr, "master is closing\n");
 
     print_stats(stats);
     
@@ -193,7 +196,7 @@ master(struct process_pipes *pipes, size_t pipes_count)
 
     event_base_free(evb);
 
-    free(ev_pipes);
+    fprintf(stderr, "master is closing\n");
 }
 
 struct dnstress_t *
@@ -306,7 +309,7 @@ main(int argc, char **argv)
     struct process_pipes *pipes = xmalloc_0(sizeof(struct process_pipes) * config->workers_count);
 
     for (size_t i = 0; i < config->workers_count; i++)
-        if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes->proc_fd) < 0)
+        if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes[i].proc_fd) < 0)
             fatal("failed to create socketpair");
 
     for (size_t i = 0; i < config->workers_count; i++) {

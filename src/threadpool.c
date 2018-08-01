@@ -1,6 +1,7 @@
 #include <pthread.h>
 
 #include "threadpool.h"
+#include "log.h"
 
 int thread_pool_free(thread_pool_t *tpool) {
     if (tpool == NULL || tpool->active > 0) return -1;
@@ -22,6 +23,9 @@ int thread_pool_free(thread_pool_t *tpool) {
 }
 
 static void * thread_pool_thread(void *_tpool) {
+    if (_tpool == NULL)
+        fatal("%s: null thread pool pointer", __func__);
+    
     thread_pool_t *tpool       = (thread_pool_t *) _tpool;
     thread_pool_queue_t *queue = tpool->work_queue;
     

@@ -131,5 +131,7 @@ void udp_servant_run(struct servant_t *servant) {
 }
 
 struct rstats_t * gstats(struct servant_t *servant) {
+    if (servant == NULL)
+        fatal("%s: null servant pointer", __func__);
     return servant->worker_base->dnstress->stats;
 }
