@@ -28,7 +28,17 @@
 #define MAX_SERVANTS 200
 #define MAX_OPEN_FD 1000000
 
+#define MAX_WORKERS  1000
+
 #define PROJNAME "dnstress"
+
+struct __mst {
+    struct event_base *evb;
+    pid_t *pids;
+    size_t pids_count;
+
+    struct rstats_t *stats;
+};
 
 static void
 send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
@@ -75,8 +85,10 @@ pworker_pipe(evutil_socket_t fd, short events, void *arg)
 static void
 master_signal(evutil_socket_t signal, short events, void *arg)
 {
-    struct event_base *evb = (struct event_base *) arg;
+    // struct __mst *mst = (struct __mst *) arg;
+    struct __mst *mst = (struct __mst *) arg;
 	pid_t pid;
+    int status;
 
 	switch (signal) {
 	    case SIGTERM:
@@ -94,9 +106,22 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 		    break;
 	}
 
-    /* TODO: kill child processes explicitly */
+    // if (pthread_mutex_lock(&(mst->stats->lock)) != 0)
+    //     fatal("%s: failed to lock mutex", __func__);
 
-	event_base_loopbreak(evb);
+    for (size_t i = 0; i < mst->pids_count; i++) {
+        if (kill(mst->pids[i], SIGINT) < 0)
+            fatal("error while killing child process");
+        waitpid(mst->pids[i], &status, 0);
+    }
+
+    // while (mst->stats->__call_num != mst->pids_count)
+    //     pthread_cond_wait(&(mst->stats->cond), &(mst->stats->lock));
+
+    // if (pthread_mutex_unlock(&(mst->stats->lock)) != 0)
+    //     fatal("%s: failed to unlock mutex", __func__);
+
+	event_base_loopbreak(mst->evb);
 }
 
 static void
@@ -136,33 +161,46 @@ pworker(struct dnsconfig_t *config, int worker_id,
 }
 
 static void
-master(const struct process_pipes *pipes, const size_t pipes_count)
+master(const struct process_pipes *pipes, pid_t *pids,
+    const size_t wcount)
 {
+    /* FIXME: change to alloca */
+    struct __mst *mst = alloca(sizeof(struct __mst));
+    memset(mst, 0, sizeof(struct __mst));
+    
     struct event_base *evb   = NULL;
     struct event *ev_sigint  = NULL;
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
-    
-    struct event **ev_pipes  = alloca(sizeof(struct event *) * pipes_count);
+
+    struct event **ev_pipes  = alloca(sizeof(struct event *) * wcount);
 
     struct rstats_t *stats = stats_create();
 
+    if (stats == NULL)
+        fatal("%s: failed to create stats", __func__);
+
     if ((evb = event_base_new()) == NULL)
         fatal("failed to create master event base");
+
+    mst->evb        = evb;
+    mst->pids       = pids;
+    mst->pids_count = wcount;
+    mst->stats      = stats;
     
     if ((ev_sigint = event_new(evb, SIGINT, 
-        EV_SIGNAL | EV_PERSIST, master_signal, evb)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
         fatal("failed to create SIGINT master event");
     
     if ((ev_sigterm = event_new(evb, SIGTERM,
-        EV_SIGNAL | EV_PERSIST, master_signal, evb)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
         fatal("failed to create SIGTERM master event");
 
     if ((ev_sigchld = event_new(evb, SIGCHLD,
-        EV_SIGNAL | EV_PERSIST, master_signal, evb)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
         fatal("failed to create SIGCHLD master event");
 
-    for (size_t i = 0; i < pipes_count; i++) {
+    for (size_t i = 0; i < wcount; i++) {
         if ((ev_pipes[i] = event_new(evb, pipes[i].proc_fd[MASTER_PROC_FD],
             EV_READ | EV_PERSIST, recv_stats_master, stats)) == NULL)
             fatal("failed to create pipe master event");
@@ -191,9 +229,8 @@ master(const struct process_pipes *pipes, const size_t pipes_count)
     event_free(ev_sigterm);
     event_free(ev_sigchld);
     
-    for (size_t i = 0; i < pipes_count; i++)
+    for (size_t i = 0; i < wcount; i++)
         event_free(ev_pipes[i]);
-
     event_base_free(evb);
 
     fprintf(stderr, "master is closing\n");
@@ -307,6 +344,8 @@ main(int argc, char **argv)
         fatal("error while parsing config");
 
     struct process_pipes *pipes = xmalloc_0(sizeof(struct process_pipes) * config->workers_count);
+    
+    pid_t  *pids = alloca(sizeof(pid_t) * config->workers_count);
 
     for (size_t i = 0; i < config->workers_count; i++)
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes[i].proc_fd) < 0)
@@ -325,11 +364,12 @@ main(int argc, char **argv)
                 close(pipes[i].proc_fd[WORKER_PROC_FD]);
                 break;
         }
+        pids[i] = pid;
     }
 
     fprintf(stderr, "[+] process workers are running\n");
 
-    master(pipes, config->workers_count);
+    master(pipes, pids, config->workers_count);
 
     free(pipes);
     dnsconfig_free(config);

@@ -7,11 +7,19 @@ struct rstats_t * stats_create(void) {
         free(stats);
         return NULL;
     }
+
+    if (pthread_cond_init(&(stats->cond), NULL) != 0) {
+        free(stats);
+        return NULL;
+    }
+
     return stats;
 }
 
 void stats_free(struct rstats_t *stats) {
     pthread_mutex_destroy(&(stats->lock));
+    pthread_cond_destroy(&(stats->cond));
+    
     free(stats);
 }
 
@@ -76,7 +84,17 @@ void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt) {
     }
 }
 
-void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2) {
+/* This function should be called only from the master process to
+ * collect stats data using condition variable. So, !!! DON'T USE !!!
+ * this function in any other context except the communication of a parent and
+ * child processes.
+ */
+void
+stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
+{
+    if (pthread_mutex_lock(&(stats1->lock)) != 0)
+        fatal("%s: mutex lock error", __func__);
+    
     stats1->n_sent_udp += stats2->n_sent_udp;
     stats1->n_recv_udp += stats2->n_recv_udp;
 
@@ -94,6 +112,14 @@ void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2) 
     stats1->n_nxrrset  += stats2->n_nxrrset;
     stats1->n_notauth  += stats2->n_notauth;
     stats1->n_notzone  += stats2->n_notzone;
+
+    stats1->__call_num++;
+
+    // if (pthread_cond_signal(&(stats1->cond)) != 0)
+    //     fatal("%s: failed to signal a cond variable", __func__);
+
+    if (pthread_mutex_unlock(&(stats1->lock)) != 0)
+        fatal("%s: mutex unlock error", __func__);
 }
 
 void print_stats(struct rstats_t *stats) {
