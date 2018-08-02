@@ -59,7 +59,9 @@ get_reply_callback(servant_type_t type)
     return NULL;
 }
 
-void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
+void 
+servant_init(struct worker_t *worker, size_t index, servant_type_t type)
+{
     /* TODO: add error codes */
     if (worker == NULL) return;
     if (index < 0 || index >= worker->dnstress->max_servants) return;
@@ -107,7 +109,9 @@ void servant_init(struct worker_t *worker, size_t index, servant_type_t type) {
     return;
 }
 
-void servant_clear(struct servant_t *servant) {
+void
+servant_clear(struct servant_t *servant)
+{
     close(servant->fd);
     event_free(servant->ev_recv);
 
@@ -122,15 +126,21 @@ void servant_clear(struct servant_t *servant) {
     servant->type   = CLEANED;
 }
 
-void tcp_servant_run(struct servant_t *servant) {
+void
+tcp_servant_run(struct servant_t *servant)
+{
     send_tcp_query(servant);
 }
 
-void udp_servant_run(struct servant_t *servant) {
+void
+udp_servant_run(struct servant_t *servant)
+{
     send_udp_query(servant);       
 }
 
-struct rstats_t * gstats(struct servant_t *servant) {
+struct rstats_t *
+gstats(struct servant_t *servant)
+{
     if (servant == NULL)
         fatal("%s: null servant pointer", __func__);
     return servant->worker_base->dnstress->stats;

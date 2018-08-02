@@ -11,8 +11,12 @@ void send_udp_query(struct servant_t *servant) {
     query_create(servant->config, servant->buffer);
 
     if (servant->buffer == NULL) {
-        log_warn("null servant's buffer pointer");  
+        fatal("null pointer at servant buffer");  
         return;
+    }
+
+    if (servant->server == NULL) {
+        fatal("null pointer at servant server");
     }
 
     ssize_t sent = ldns_udp_send_query(servant->buffer, servant->fd, 
