@@ -121,6 +121,7 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
 void print_stats(struct rstats_t *stats) {
     /* TODO: PRINT RESULTS */
 
+    fprintf(stderr, "\n");
     fprintf(stderr, "   TEST STATISTIC\n");
     fprintf(stderr, "     ==== UDP ====\n");
     fprintf(stderr, "     [*] sent UDP packets: %zu\n", stats->n_sent_udp);
