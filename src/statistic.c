@@ -44,9 +44,8 @@ void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer) {
     ldns_pkt_free(reply);
 }
 
-/* FIXME: lock */
 void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt) {
-    /* TODO: too crappy code have to be changed */
+    /* TODO: too crappy code has to be changed */
     switch (ldns_pkt_get_rcode(pkt)) {
         case LDNS_RCODE_NOERROR:
             inc_rsts_fld(stats, &(stats->n_noerr));
@@ -94,7 +93,7 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
 {
     if (pthread_mutex_lock(&(stats1->lock)) != 0)
         fatal("%s: mutex lock error", __func__);
-    
+
     stats1->n_sent_udp += stats2->n_sent_udp;
     stats1->n_recv_udp += stats2->n_recv_udp;
 
@@ -114,9 +113,6 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
     stats1->n_notzone  += stats2->n_notzone;
 
     stats1->__call_num++;
-
-    // if (pthread_cond_signal(&(stats1->cond)) != 0)
-    //     fatal("%s: failed to signal a cond variable", __func__);
 
     if (pthread_mutex_unlock(&(stats1->lock)) != 0)
         fatal("%s: mutex unlock error", __func__);

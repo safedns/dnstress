@@ -33,11 +33,13 @@
 #define PROJNAME "dnstress"
 
 struct __mst {
-    struct event_base *evb;
-    pid_t *pids;
-    size_t pids_count;
+    struct event_base    *evb;
+    pid_t                *pids;
+    size_t                pids_count;
+    
+    struct process_pipes *pipes;
 
-    struct rstats_t *stats;
+    struct rstats_t      *stats;
 };
 
 static void
@@ -50,9 +52,8 @@ send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
 }
 
 static void
-recv_stats_master(evutil_socket_t fd, short events, void *arg)
+recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
 {
-    struct rstats_t *stats   = (struct rstats_t *) arg;
     struct rstats_t *r_stats = stats_create();
 
     ssize_t recv = read(fd, r_stats, sizeof(*r_stats));
@@ -106,20 +107,11 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 		    break;
 	}
 
-    // if (pthread_mutex_lock(&(mst->stats->lock)) != 0)
-    //     fatal("%s: failed to lock mutex", __func__);
-
     for (size_t i = 0; i < mst->pids_count; i++) {
-        if (kill(mst->pids[i], SIGINT) < 0)
+        if (kill(mst->pids[i], SIGTERM) < 0)
             fatal("error while killing child process");
         waitpid(mst->pids[i], &status, 0);
     }
-
-    // while (mst->stats->__call_num != mst->pids_count)
-    //     pthread_cond_wait(&(mst->stats->cond), &(mst->stats->lock));
-
-    // if (pthread_mutex_unlock(&(mst->stats->lock)) != 0)
-    //     fatal("%s: failed to unlock mutex", __func__);
 
 	event_base_loopbreak(mst->evb);
 }
@@ -147,6 +139,7 @@ pworker(struct dnsconfig_t *config, int worker_id,
 
     log_info("proc-worker: %d | dnstress created", worker_id);
     log_info("proc-worker: %d | dnstress running", worker_id);
+    fprintf(stderr, "proc-worker: %d | starting dnstress...\n", worker_id);
 
     dnstress_run(dnstress);
     
@@ -155,13 +148,13 @@ pworker(struct dnsconfig_t *config, int worker_id,
     dnstress_free(dnstress);
 
     log_info("proc-worker: %d  | dnstress closing", worker_id);
-    fprintf(stderr, "process worker is exiting\n");
+    // fprintf(stderr, "process worker is exiting\n");
 
     exit(0);
 }
 
 static void
-master(const struct process_pipes *pipes, pid_t *pids,
+master(struct process_pipes *pipes, pid_t *pids,
     const size_t wcount)
 {
     /* FIXME: change to alloca */
@@ -172,8 +165,6 @@ master(const struct process_pipes *pipes, pid_t *pids,
     struct event *ev_sigint  = NULL;
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
-
-    struct event **ev_pipes  = alloca(sizeof(struct event *) * wcount);
 
     struct rstats_t *stats = stats_create();
 
@@ -187,6 +178,7 @@ master(const struct process_pipes *pipes, pid_t *pids,
     mst->pids       = pids;
     mst->pids_count = wcount;
     mst->stats      = stats;
+    mst->pipes      = pipes;
     
     if ((ev_sigint = event_new(evb, SIGINT, 
         EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
@@ -200,15 +192,6 @@ master(const struct process_pipes *pipes, pid_t *pids,
         EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
         fatal("failed to create SIGCHLD master event");
 
-    for (size_t i = 0; i < wcount; i++) {
-        if ((ev_pipes[i] = event_new(evb, pipes[i].proc_fd[MASTER_PROC_FD],
-            EV_READ | EV_PERSIST, recv_stats_master, stats)) == NULL)
-            fatal("failed to create pipe master event");
-
-        if (event_add(ev_pipes[i], NULL) < 0)
-            fatal("failed to add pipe master event | errno: %d", errno);
-    }
-
     if (event_add(ev_sigint, NULL) < 0)
         fatal("failed to add SIGINT master event");
 
@@ -221,6 +204,9 @@ master(const struct process_pipes *pipes, pid_t *pids,
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
 
+    for (size_t i = 0; i < wcount; i++)
+        recv_stats_master(pipes[i].proc_fd[MASTER_PROC_FD], stats);
+
     print_stats(stats);
     
     stats_free(stats);
@@ -228,12 +214,10 @@ master(const struct process_pipes *pipes, pid_t *pids,
     event_free(ev_sigint);
     event_free(ev_sigterm);
     event_free(ev_sigchld);
-    
-    for (size_t i = 0; i < wcount; i++)
-        event_free(ev_pipes[i]);
+
     event_base_free(evb);
 
-    fprintf(stderr, "master is closing\n");
+    // fprintf(stderr, "master is closing\n");
 }
 
 struct dnstress_t *

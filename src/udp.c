@@ -26,17 +26,16 @@ void send_udp_query(struct servant_t *servant) {
         /** 
          * FIXME
          * We sent 0 bytes. So, it's either a fd is broken or
-         * a server is unvailable, hence let's clear the whole servant.
-         * 
-         * But of course it would be better to try to create a new
-         * connection, and if it fails, then clear the servant
+         * a server is unvailable
          */
-        servant_clear(servant);
+        
+        // servant_clear(servant);
+        
         log_warn("worker: %d | servant: %d/%s | sent %ld bytes", 
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);
-        return;
     }
+    
     inc_rsts_fld(stats, &(stats->n_sent_udp));
 }
 
