@@ -29,7 +29,6 @@ struct rstats_t {
     size_t n_notzone;
 
     pthread_mutex_t lock;
-    
     pthread_cond_t  cond;
 
     size_t __call_num;
