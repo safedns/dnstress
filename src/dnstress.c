@@ -25,13 +25,17 @@
 #include "utils.h"
 #include "log.h"
 
-#define MAX_SERVANTS 200
-#define MAX_OPEN_FD 1000000
+#define MAX_UDP_SERVANTS 200
+#define MAX_TCP_SERVANTS 20
+#define MAX_WORKERS      1000
 
-#define MAX_WORKERS  1000
+#define MAX_OPEN_FD 1000000
 
 #define PROJNAME "dnstress"
 
+/* subsidiary structure for communicating between 
+ * workers and master process
+ */
 struct __mst {
     struct event_base    *evb;
     pid_t                *pids;
@@ -86,7 +90,6 @@ pworker_pipe(evutil_socket_t fd, short events, void *arg)
 static void
 master_signal(evutil_socket_t signal, short events, void *arg)
 {
-    // struct __mst *mst = (struct __mst *) arg;
     struct __mst *mst = (struct __mst *) arg;
 	pid_t pid;
     int status;
@@ -204,6 +207,7 @@ master(struct process_pipes *pipes, pid_t *pids,
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
 
+    /* receive stats from workers */
     for (size_t i = 0; i < wcount; i++)
         recv_stats_master(pipes[i].proc_fd[MASTER_PROC_FD], stats);
 
@@ -216,19 +220,19 @@ master(struct process_pipes *pipes, pid_t *pids,
     event_free(ev_sigchld);
 
     event_base_free(evb);
-
-    // fprintf(stderr, "master is closing\n");
 }
 
 struct dnstress_t *
-dnstress_create(dnsconfig_t *config, int fd)
+dnstress_create(struct dnsconfig_t *config, int fd)
 {
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
     
     dnstress->config        = config;
     dnstress->stats         = stats_create();
     dnstress->workers_count = config->addrs_count;
-    dnstress->max_servants  = MAX_SERVANTS;
+    
+    dnstress->max_udp_servants  = MAX_UDP_SERVANTS;
+    dnstress->max_tcp_servants  = MAX_TCP_SERVANTS;
 
     if (dnstress->stats == NULL)
         fatal("error while creating stats");
@@ -312,7 +316,7 @@ dnstress_free(struct dnstress_t *dnstress)
 int
 main(int argc, char **argv)
 {
-    dnsconfig_t *config = NULL;
+    struct dnsconfig_t *config = NULL;
 
     log_init(PROJNAME, 0);
     log_info("=================================");
@@ -353,7 +357,7 @@ main(int argc, char **argv)
         pids[i] = pid;
     }
 
-    fprintf(stderr, "[+] process workers are running\n\n");
+    fprintf(stderr, "[+] process workers are starting...\n\n");
 
     master(pipes, pids, config->workers_count);
 

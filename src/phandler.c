@@ -25,7 +25,7 @@ static struct query_t * get_random_query(struct dnsconfig_t *config) {
     return query;
 }
 
-void query_create(struct dnsconfig_t * config, ldns_buffer *buffer) {
+static void query_create_inner(struct dnsconfig_t *config, ldns_buffer *buffer) {
     if (config == NULL || buffer == NULL) return;
     
     ldns_pkt *query_pkt = NULL;
@@ -49,6 +49,37 @@ void query_create(struct dnsconfig_t * config, ldns_buffer *buffer) {
     ldns_pkt_free(query_pkt);
 }
 
-void reply_process(ldns_buffer *buffer) {
-    /* FIXME: useless?? */
+void query_create(struct servant_t *servant) {    
+    if (servant->buffer == NULL)
+        fatal("%s: null pointer at servant buffer", __func__);
+    if (servant->server == NULL)
+        fatal("%s: null pointer at servant server", __func__);
+    if (servant->config == NULL)
+        fatal("%s: null pointer at servant server", __func__);
+    
+    ldns_buffer_clear(servant->buffer);
+    
+    query_create_inner(servant->config, servant->buffer);
+}
+
+void reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size) {
+    if (servant->buffer == NULL)
+        fatal("%s: null pointer at servant's buffer", __func__);
+    
+    struct rstats_t *stats = gstats(servant);
+
+    switch (servant->type) {
+        case TCP_TYPE:
+            inc_rsts_fld(stats, &(stats->n_recv_tcp));
+            break;
+        case UDP_TYPE:
+            inc_rsts_fld(stats, &(stats->n_recv_udp));
+            break;
+        default:
+            fatal("%s: unknown servant type", __func__);
+    }
+
+    ldns_buffer_new_frm_data(servant->buffer, answer, answer_size);
+
+    stats_update_buf(stats, servant->buffer);
 }

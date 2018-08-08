@@ -41,7 +41,7 @@ void usage(void) {
     exit(1);
 }
 
-void parse_args(int argc, char **argv, dnsconfig_t *config) {
+void parse_args(int argc, char **argv, struct dnsconfig_t *config) {
     char *configfile = "./dnstress.json";
 
     for (size_t i = 1; i < argc; i++) {

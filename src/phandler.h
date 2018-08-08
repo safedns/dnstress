@@ -6,7 +6,9 @@
 #include <ldns/ldns.h>
 
 #include "dnsconfig.h"
+#include "servant.h"
 
+struct servant_t;
 struct dnsconfig_t;
 
 struct query_t {
@@ -15,7 +17,7 @@ struct query_t {
     char *type;
 };
 
-void query_create(struct dnsconfig_t *config, ldns_buffer *buffer);
-void reply_process(ldns_buffer *buffer);
+void query_create(struct servant_t *servant);
+void reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size);
 
 #endif /* __QUERY_H__ */

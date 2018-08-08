@@ -5,6 +5,16 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 
+
+/* dirty code, it should be moved */
+typedef enum {
+    UDP_VALID,     /* udp valid DNS request */
+    UDP_NONVALID,  /* udp non-valid DNS request */
+    TCP_VALID,     /* tcp valid DNS request */
+    TCP_NONVALID,  /* tcp non-valid DNS request */
+    SHUFFLE        /* any DNS requests */
+} request_mode_t;
+
 #include "jsmn.h"
 #include "phandler.h"
 
@@ -27,16 +37,6 @@
 
 #define PKTSIZE 65536
 
-typedef struct dnsconfig_t dnsconfig_t;
-
-typedef enum {
-    UDP_VALID,     /* udp valid DNS request */
-    UDP_NONVALID,  /* udp non-valid DNS request */
-    TCP_VALID,     /* tcp valid DNS request */
-    TCP_NONVALID,  /* tcp non-valid DNS request */
-    SHUFFLE        /* any DNS requests */
-} request_mode_t;
-
 struct _saddr {
     struct sockaddr_storage addr;
     char *repr;
@@ -56,9 +56,9 @@ struct dnsconfig_t {
     size_t queries_count;
 };
 
-dnsconfig_t * dnsconfig_create(void);
-void          dnsconfig_free(dnsconfig_t * config);
+struct dnsconfig_t * dnsconfig_create(void);
+void dnsconfig_free(struct dnsconfig_t * config);
 
-int parse_config(dnsconfig_t *config, char *filename);
+int parse_config(struct dnsconfig_t *config, char *filename);
 
 #endif /* __DNSCONFIG_H__ */

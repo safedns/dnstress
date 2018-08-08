@@ -64,7 +64,8 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
 {
     /* TODO: add error codes */
     if (worker == NULL) return;
-    if (index < 0 || index >= worker->dnstress->max_servants) return;
+    if (type == UDP_TYPE && (index < 0 || index >= worker->dnstress->max_udp_servants)) return;
+    if (type == TCP_TYPE && (index < 0 || index >= worker->dnstress->max_tcp_servants)) return;
     if (type == CLEANED) return;
     
     int sock_type = get_sock_type(type);

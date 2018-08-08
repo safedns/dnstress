@@ -38,6 +38,9 @@ void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant) {
 }
 
 void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer) {
+    if (stats == NULL || buffer == NULL)
+        fatal("%s: null argument pointer", __func__);
+    
     ldns_pkt *reply = ldns_pkt_new();
     ldns_buffer2pkt_wire(&reply, buffer);
     stats_update_pkt(stats, reply);

@@ -7,10 +7,13 @@
 #include "network.h"
 #include "servant.h"
 #include "dnstress.h"
+#include "dnsconfig.h"
+
+struct dnstress_t;
 
 struct worker_t {
     size_t index; /* worker's index in a dnstress' list of workers */
-    request_mode_t mode; /* type of requesting */
+    request_mode_t mode; /* type of a request */
 
     struct _saddr *server; /* address of DNS server */
     
