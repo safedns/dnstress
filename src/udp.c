@@ -6,6 +6,10 @@
 void send_udp_query(struct servant_t *servant) {
     query_create(servant);
 
+    if (servant->server == NULL) {
+        fatal("null pointer at servant server");
+    }
+
     ssize_t sent = ldns_udp_send_query(servant->buffer, servant->fd, 
             &servant->server->addr, servant->server->len);
     
@@ -15,7 +19,6 @@ void send_udp_query(struct servant_t *servant) {
          * We sent 0 bytes. So, it's either a fd is broken or
          * a server is unvailable
          */
-        
         log_warn("worker: %d | servant: %d/%s | sent %ld bytes", 
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);

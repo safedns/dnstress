@@ -31,6 +31,8 @@
 
 #define MAX_OPEN_FD 1000000
 
+#define MAX_WORKERS  1000
+
 #define PROJNAME "dnstress"
 
 /* subsidiary structure for communicating between 
@@ -220,6 +222,8 @@ master(struct process_pipes *pipes, pid_t *pids,
     event_free(ev_sigchld);
 
     event_base_free(evb);
+
+    // fprintf(stderr, "master is closing\n");
 }
 
 struct dnstress_t *
@@ -233,6 +237,9 @@ dnstress_create(struct dnsconfig_t *config, int fd)
     
     dnstress->max_udp_servants  = MAX_UDP_SERVANTS;
     dnstress->max_tcp_servants  = MAX_TCP_SERVANTS;
+
+    if (dnstress->stats == NULL)
+        fatal("error while creating stats");
 
     if (dnstress->stats == NULL)
         fatal("error while creating stats");
