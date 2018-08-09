@@ -24,6 +24,8 @@ void send_tcp_query(struct servant_t *servant) {
 void recv_tcp_reply(evutil_socket_t fd, short events, void *arg) {
     struct servant_t *servant = (struct servant_t *) arg;
 
+    if (!servant->active) return;
+
     size_t   answer_size = 0;
     uint8_t *answer      = NULL;
 
@@ -32,6 +34,7 @@ void recv_tcp_reply(evutil_socket_t fd, short events, void *arg) {
     if (answer == NULL) {
         log_warn("worker: %d | servant: %d/%s | received empty answer",
             servant->worker_base->index, servant->index, type2str(servant->type));
+        servant->active = false;
         return;
     }
     reply_process(servant, answer, answer_size);
