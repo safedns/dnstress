@@ -83,13 +83,11 @@ void
 worker_clear(struct worker_t * worker)
 {
     for (size_t i = 0; i < worker->tcp_serv_count; i++) {
-        if (worker->tcp_servants[i].ev_recv != NULL)
-            event_free(worker->tcp_servants[i].ev_recv);
+        servant_clear(&worker->tcp_servants[i]);
     }
     
     for (size_t i = 0; i < worker->udp_serv_count; i++) {
-        if (worker->udp_servants[i].ev_recv != NULL)
-            event_free(worker->udp_servants[i].ev_recv);
+        servant_clear(&worker->udp_servants[i]);
     }
 
     if (worker->tcp_servants != NULL) free(worker->tcp_servants);
@@ -99,4 +97,5 @@ worker_clear(struct worker_t * worker)
     worker->udp_servants = NULL;
     worker->server       = NULL;
     worker->dnstress     = NULL;
+    worker->config       = NULL;
 }
