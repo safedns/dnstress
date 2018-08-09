@@ -34,6 +34,8 @@ void * xmalloc_0(size_t size);
 bool is_negative_int(char *str);
 bool is_file(char *str); 
 
+bool is_server_available(struct _saddr *server);
+
 const char * type2str(servant_type_t type);
 
 /* reads file and writes its data to content variable */

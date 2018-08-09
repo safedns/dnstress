@@ -4,13 +4,15 @@
 #include "utils.h"
 
 void send_tcp_query(struct servant_t *servant) {
+    if (!servant->active) return;
+    
     query_create(servant);
 
     ssize_t sent = ldns_tcp_send_query(servant->buffer, servant->fd,
         &servant->server->addr, servant->server->len);
     
     if (sent <= 0) {
-        log_warn("worker: %d | servant: %d/%s | sent %ld bytes", 
+        fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);
     }

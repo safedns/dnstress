@@ -24,6 +24,8 @@ typedef enum {
 struct servant_t {
     size_t index;  /* index in worker's `servants` list */
     int fd;
+
+    bool active;
     
     servant_type_t type;
     

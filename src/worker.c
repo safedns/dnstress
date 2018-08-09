@@ -41,7 +41,12 @@ worker_init(struct dnstress_t *dnstress, size_t index)
     struct worker_t *worker = &(dnstress->workers[index]);
     
     worker->index  = index;
+
     worker->server = &(dnstress->config->addrs[index]);
+
+    if (!is_server_available(worker->server))
+        fatal("%s: server is not available: %s", __func__, worker->server->repr);
+
     worker->mode   = dnstress->config->mode;
 
     worker->dnstress = dnstress;

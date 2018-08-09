@@ -55,6 +55,11 @@ bool is_file(char *str) {
     return false;
 }
 
+bool is_server_available(struct _saddr *server) {
+    /* TODO: implement this function */
+    return true;
+}
+
 const char * type2str(servant_type_t type) {
     switch (type) {
         case UDP_TYPE:

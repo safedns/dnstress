@@ -4,6 +4,8 @@
 #include "utils.h"
 
 void send_udp_query(struct servant_t *servant) {
+    if (!servant->active) return;
+
     query_create(servant);
 
     if (servant->server == NULL) {
@@ -19,7 +21,7 @@ void send_udp_query(struct servant_t *servant) {
          * We sent 0 bytes. So, it's either a fd is broken or
          * a server is unvailable
          */
-        log_warn("worker: %d | servant: %d/%s | sent %ld bytes", 
+        fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);
     }

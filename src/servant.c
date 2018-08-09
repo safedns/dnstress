@@ -89,15 +89,14 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
         fatal("failed to create a servant's socket");
         
     if (connect(servant->fd, (struct sockaddr *) &(sstor->addr), sstor->len) < 0) {
-        log_info("worker %d: connection error --> %s", worker->index, worker->server->repr);
-        close(servant->fd);
-        return;
+        log_info("%s: worker: %d | servant: %d | connection error --> %s", __func__, worker->index,
+            servant->index, worker->server->repr);
+        goto err_return;
     }        
     /* make non-blocking */
     long flags = fcntl(servant->fd, F_GETFL, 0);
     if (fcntl(servant->fd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        close(servant->fd);
-        return;
+        goto err_return;
     }
 
     if ((servant->ev_recv = event_new(worker->dnstress->evb, servant->fd, 
@@ -107,6 +106,13 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
     if (event_add(servant->ev_recv, NULL) == -1)
         fatal("failed to add servant's event");
 
+    servant->active = true;
+    return;
+
+err_return:
+    close(servant->fd);
+    ldns_buffer_free(servant->buffer);
+    servant->buffer = NULL;
     return;
 }
 
@@ -116,11 +122,13 @@ servant_clear(struct servant_t *servant)
     close(servant->fd);
     event_free(servant->ev_recv);
 
-    ldns_buffer_free(servant->buffer);
+    if (servant->buffer)
+        ldns_buffer_free(servant->buffer);
     
     servant->config  = NULL;
     servant->server  = NULL;
     servant->ev_recv = NULL;
+    servant->buffer  = NULL;
     
     servant->index  = 0;
     servant->fd     = -1;
