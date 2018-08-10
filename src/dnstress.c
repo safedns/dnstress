@@ -26,7 +26,7 @@
 #include "log.h"
 
 #define MAX_UDP_SERVANTS 200
-#define MAX_TCP_SERVANTS 10
+#define MAX_TCP_SERVANTS 20
 #define MAX_WORKERS      1000
 
 #define MAX_OPEN_FD 1000000
