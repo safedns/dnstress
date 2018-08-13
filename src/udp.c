@@ -19,7 +19,7 @@ void send_udp_query(struct servant_t *servant) {
         if (sent < 0) {
             /** 
              * FIXME
-             * We sent 0 bytes. So, it's either a fd is broken or
+             * We sent less than 0 bytes. So, it's either a fd is broken or
              * a server is unvailable
              */
             fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
