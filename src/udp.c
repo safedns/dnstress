@@ -12,22 +12,28 @@ void send_udp_query(struct servant_t *servant) {
         fatal("null pointer at servant server");
     }
 
-    ssize_t sent = ldns_udp_send_query(servant->buffer, servant->fd, 
-            &servant->server->addr, servant->server->len);
-    
-    if (sent <= 0) {
-        /** 
-         * FIXME
-         * We sent 0 bytes. So, it's either a fd is broken or
-         * a server is unvailable
-         */
-        fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
-            servant->worker_base->index, servant->index, 
-            type2str(servant->type), sent);
+    /* try to transmit all data until it will be correctly sent */
+    while (true) {
+        ssize_t sent = ldns_udp_send_query(servant->buffer, servant->fd, 
+                &servant->server->addr, servant->server->len);
+        if (sent < 0) {
+            /** 
+             * FIXME
+             * We sent 0 bytes. So, it's either a fd is broken or
+             * a server is unvailable
+             */
+            fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
+                servant->worker_base->index, servant->index, 
+                type2str(servant->type), sent);
+        } else if (sent > 0) {
+            break;
+        } else {
+            continue;
+        }
     }
     
     struct rstats_t *stats = gstats(servant);
-    inc_rsts_fld(stats, &(stats->n_sent_udp));
+    inc_rsts_fld(stats, &stats->n_sent_udp);
 }
 
 void recv_udp_reply(evutil_socket_t fd, short events, void *arg) {

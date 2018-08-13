@@ -84,6 +84,9 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
     servant->worker_base = worker;
 
     servant->buffer = ldns_buffer_new(PKTSIZE);
+
+    if (servant->buffer == NULL)
+        fatal("failed to create ldns buffer");
     
     if (servant->fd < 0)
         fatal("failed to create a servant's socket");

@@ -49,6 +49,7 @@ static void query_create_inner(struct dnsconfig_t *config, ldns_buffer *buffer) 
     ldns_pkt_free(query_pkt);
 }
 
+/* creates a query inside of servant's buffer */
 void query_create(struct servant_t *servant) {    
     if (servant->buffer == NULL)
         fatal("%s: null pointer at servant buffer", __func__);
@@ -57,7 +58,8 @@ void query_create(struct servant_t *servant) {
     if (servant->config == NULL)
         fatal("%s: null pointer at servant server", __func__);
     
-    ldns_buffer_clear(servant->buffer);
+    if (servant->buffer)
+        ldns_buffer_clear(servant->buffer);
     
     query_create_inner(servant->config, servant->buffer);
 }

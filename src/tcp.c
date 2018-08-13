@@ -12,9 +12,10 @@ void send_tcp_query(struct servant_t *servant) {
         &servant->server->addr, servant->server->len);
     
     if (sent <= 0) {
-        fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
+        fatal("worker: %d | servant: %d/%s | sent %ld bytes",
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);
+        return;
     }
 
     struct rstats_t *stats = gstats(servant);
