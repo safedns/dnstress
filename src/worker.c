@@ -22,14 +22,16 @@ servants_setup(struct worker_t *worker)
 {
     /* TCP workers*/
     for (size_t i = 0; i < worker->tcp_serv_count; i++) {
-        servant_init(worker, i, TCP_TYPE);
+        if (servant_init(worker, i, TCP_TYPE) < 0)
+            fatal("%s: error while initializing a TCP servant", __func__);
     }
     log_info("worker: %d | servants: [0-%d]/TCP",
             worker->index, worker->tcp_serv_count);
     
     /* UDP workers*/
     for (size_t i = 0; i < worker->udp_serv_count; i++) {
-        servant_init(worker, i, UDP_TYPE);
+        if (servant_init(worker, i, UDP_TYPE) < 0)
+            fatal("%s: error while initializing a UDP servant", __func__);
     }
     log_info("worker: %d | servants: [0-%d]/UDP",
             worker->index, worker->udp_serv_count);
@@ -38,6 +40,9 @@ servants_setup(struct worker_t *worker)
 void
 worker_init(struct dnstress_t *dnstress, size_t index)
 {
+    if (dnstress == NULL)
+        fatal("%s: dnstress null pointer", __func__);
+    
     struct worker_t *worker = &(dnstress->workers[index]);
     
     worker->index  = index;
@@ -58,8 +63,13 @@ worker_init(struct dnstress_t *dnstress, size_t index)
     worker->tcp_servants = xmalloc_0(sizeof(struct servant_t) * worker->tcp_serv_count);
     worker->udp_servants = xmalloc_0(sizeof(struct servant_t) * worker->udp_serv_count);
 
+    if (pthread_mutex_init(&worker->lock, NULL) != 0)
+        fatal("%s: failed to create mutex", __func__);
+
     servants_setup(worker);
-    log_info("workers are configured");
+    log_info("servants are configured");
+
+    worker->active = true;
 }
 
 void
@@ -67,20 +77,28 @@ worker_run(void *arg)
 {
     struct worker_t * worker = (struct worker_t *) arg;
 
-    if (tcp_mode_b(worker->mode)) {
-        for (size_t i = 0; i < worker->tcp_serv_count; i++) {
-            /* sending DNS requests */
-            send_tcp_query(&worker->tcp_servants[i]);
-            // tcp_servant_run(&worker->tcp_servants[i]);
+    while (true) {
+        pthread_mutex_lock(&worker->lock);
+        if (!worker->active) {
+            pthread_mutex_unlock(&worker->lock);
+            break;
         }
-    }
 
-    if (udp_mode_b(worker->mode)) {
-        for (size_t i = 0; i < worker->udp_serv_count; i++) {
-            /* sending DNS requests */
-            send_udp_query(&worker->udp_servants[i]);
-            // udp_servant_run(&worker->udp_servants[i]);
+        if (tcp_mode_b(worker->mode)) {
+            for (size_t i = 0; i < worker->tcp_serv_count; i++) {
+                /* sending DNS requests */
+                // tcp_servant_run(&worker->tcp_servants[i]);
+                send_tcp_query(&worker->tcp_servants[i]);
+            }
         }
+
+        if (udp_mode_b(worker->mode)) {
+            for (size_t i = 0; i < worker->udp_serv_count; i++) {
+                /* sending DNS requests */
+                udp_servant_run(&worker->udp_servants[i]);
+            }
+        }
+        pthread_mutex_unlock(&worker->lock);
     }
 }
 
@@ -98,9 +116,14 @@ worker_clear(struct worker_t * worker)
     if (worker->tcp_servants != NULL) free(worker->tcp_servants);
     if (worker->udp_servants != NULL) free(worker->udp_servants);
 
+    if (pthread_mutex_destroy(&worker->lock) != 0)
+        fatal("%s: failed to destroy mutex", __func__);
+
     worker->tcp_servants = NULL;
     worker->udp_servants = NULL;
     worker->server       = NULL;
     worker->dnstress     = NULL;
     worker->config       = NULL;
+
+    worker->active = false;
 }

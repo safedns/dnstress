@@ -35,7 +35,7 @@ typedef enum {
 
 #define DNS_PORT 53
 
-#define PKTSIZE 65536
+#define PKTSIZE 65535
 
 struct _saddr {
     struct sockaddr_storage addr;

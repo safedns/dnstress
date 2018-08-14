@@ -30,7 +30,8 @@ static void * thread_pool_thread(void *_tpool) {
     thread_pool_queue_t *queue = tpool->work_queue;
     
     while (1) {
-        if (pthread_mutex_lock(&(tpool->lock)) != 0) return (void *) thread_pool_lock_error;
+        if (pthread_mutex_lock(&(tpool->lock)) != 0)
+            return (void *) thread_pool_lock_error;
 
         while ((!tpool->shutdown) && (tpool->work_queue->wcount == 0))
             pthread_cond_wait(&(tpool->cond), &(tpool->lock));
@@ -44,7 +45,8 @@ static void * thread_pool_thread(void *_tpool) {
         queue->head = (queue->head + 1) % queue->size;
         queue->wcount--;
 
-        if (pthread_mutex_unlock(&(tpool->lock)) != 0) return (void *) thread_pool_lock_error;
+        if (pthread_mutex_unlock(&(tpool->lock)) != 0)
+            return (void *) thread_pool_lock_error;
 
         (*(work.task))(work.args);
     }
@@ -128,11 +130,19 @@ int thread_pool_kill(thread_pool_t *tpool, int killtype) {
 
     tpool->shutdown = killtype;
 
-    if (pthread_cond_broadcast(&(tpool->cond)) != 0) { err_code = thread_pool_lock_error; goto exit; }
-    if (pthread_mutex_unlock(  &(tpool->lock)) != 0) { err_code = thread_pool_lock_error; goto exit; }
+    if (pthread_cond_broadcast(&(tpool->cond)) != 0) {
+        err_code = thread_pool_lock_error;
+        goto exit;
+    }
+    
+    if (pthread_mutex_unlock(&(tpool->lock)) != 0) {
+        err_code = thread_pool_lock_error;
+        goto exit;
+    }
 
     for (size_t i = 0; i < tpool->workers_count; i++) {
-        if (pthread_join(tpool->workers[i], NULL) != 0) err_code = thread_pool_thread_error;
+        if (pthread_join(tpool->workers[i], NULL) != 0)
+            err_code = thread_pool_thread_error;
     }
 
 exit:

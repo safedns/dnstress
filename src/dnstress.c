@@ -25,13 +25,14 @@
 #include "utils.h"
 #include "log.h"
 
-#define MAX_UDP_SERVANTS 200
-#define MAX_TCP_SERVANTS 20
+// #define MAX_UDP_SERVANTS 200
+// #define MAX_TCP_SERVANTS 20
+
+#define MAX_UDP_SERVANTS 1
+#define MAX_TCP_SERVANTS 1
 #define MAX_WORKERS      1000
 
 #define MAX_OPEN_FD 1000000
-
-#define MAX_WORKERS  1000
 
 #define PROJNAME "dnstress"
 
@@ -75,6 +76,10 @@ static void
 pworker_signal(evutil_socket_t signal, short events, void *arg)
 {
     log_info("proc-worker: got fatal signal %d", signal);
+
+    /* we don't want to exit because of this signal */
+    if (signal == SIGPIPE)
+        return;
     
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
@@ -101,7 +106,7 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 	    case SIGINT:
 		    break;
 	    case SIGCHLD:
-		    do {
+            do {
 			    pid = waitpid(WAIT_ANY, NULL, WNOHANG);
 			    if (pid <= 0)
 				    continue;
@@ -122,15 +127,17 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 }
 
 static void
-pworker(struct dnsconfig_t *config, int worker_id,
+pworker(struct dnsconfig_t *config, int proc_worker_id,
     struct process_pipes *pipes)
 {
+    signal(SIGPIPE, SIG_IGN);
+
     struct dnstress_t *dnstress = NULL;
     struct rlimit lim;
 
     for (size_t i = 0; i < config->workers_count; i++) {
         close(pipes[i].proc_fd[MASTER_PROC_FD]);
-        if (i != worker_id)
+        if (i != proc_worker_id)
             close(pipes[i].proc_fd[WORKER_PROC_FD]);
     }
 
@@ -140,19 +147,20 @@ pworker(struct dnsconfig_t *config, int worker_id,
     if (setrlimit(RLIMIT_NOFILE, &lim) < 0)
         fatal("failed to set rlimit");
 
-    dnstress = dnstress_create(config, pipes[worker_id].proc_fd[WORKER_PROC_FD]);
+    dnstress = dnstress_create(config, 
+        pipes[proc_worker_id].proc_fd[WORKER_PROC_FD], proc_worker_id);
 
-    log_info("proc-worker: %d | dnstress created", worker_id);
-    log_info("proc-worker: %d | dnstress running", worker_id);
-    fprintf(stderr, "proc-worker: %d | starting dnstress...\n", worker_id);
+    log_info("proc-worker: %d | dnstress created", proc_worker_id);
+    log_info("proc-worker: %d | dnstress running", proc_worker_id);
+    fprintf(stderr, "proc-worker: %d | starting dnstress...\n", proc_worker_id);
 
     dnstress_run(dnstress);
     
-    send_stats_worker(dnstress->stats, pipes, worker_id);
+    send_stats_worker(dnstress->stats, pipes, proc_worker_id);
     
     dnstress_free(dnstress);
 
-    log_info("proc-worker: %d  | dnstress closing", worker_id);
+    log_info("proc-worker: %d  | dnstress closing", proc_worker_id);
     // fprintf(stderr, "process worker is exiting\n");
 
     exit(0);
@@ -162,7 +170,8 @@ static void
 master(struct process_pipes *pipes, pid_t *pids,
     const size_t wcount)
 {
-    /* FIXME: change to alloca */
+    signal(SIGPIPE, SIG_IGN);
+
     struct __mst *mst = alloca(sizeof(struct __mst));
     memset(mst, 0, sizeof(struct __mst));
     
@@ -227,16 +236,18 @@ master(struct process_pipes *pipes, pid_t *pids,
 }
 
 struct dnstress_t *
-dnstress_create(struct dnsconfig_t *config, int fd)
-{
+dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
+{   
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
     
     dnstress->config        = config;
     dnstress->stats         = stats_create();
     dnstress->workers_count = config->addrs_count;
+
+    dnstress->proc_worker_id = proc_worker_id;
     
-    dnstress->max_udp_servants  = MAX_UDP_SERVANTS;
-    dnstress->max_tcp_servants  = MAX_TCP_SERVANTS;
+    dnstress->max_udp_servants = MAX_UDP_SERVANTS;
+    dnstress->max_tcp_servants = MAX_TCP_SERVANTS;
 
     if (dnstress->stats == NULL)
         fatal("error while creating stats");
@@ -256,6 +267,14 @@ dnstress_create(struct dnsconfig_t *config, int fd)
 	if ((dnstress->ev_sigterm = event_new(dnstress->evb, SIGTERM,
 	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
 		fatal("failed to create SIGTERM signal event");
+    
+    if ((dnstress->ev_sigsegv = event_new(dnstress->evb, SIGSEGV,
+	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+		fatal("failed to create SIGSEGV signal event");
+
+    if ((dnstress->ev_sigpipe = event_new(dnstress->evb, SIGPIPE,
+        EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+        fatal("failed to create SIGPIPE signal event");
 
     if ((dnstress->ev_pipe = event_new(dnstress->evb, fd,
         EV_READ | EV_PERSIST, pworker_pipe, dnstress)) == NULL)
@@ -266,6 +285,8 @@ dnstress_create(struct dnsconfig_t *config, int fd)
 
     for (size_t i = 0; i < dnstress->workers_count; i++)
         worker_init(dnstress, i);
+    
+    log_info("proc-worker | workers are configurated");
 
     if ((dnstress->pool = thread_pool_init(MAX_THREADS, QUEUE_SIZE)) == NULL)
         fatal("failed to create thread pool");
@@ -282,6 +303,12 @@ dnstress_run(struct dnstress_t *dnstress)
     if (event_add(dnstress->ev_sigterm, NULL) < 0)
         fatal("failed to add SIGTERM dnstress event");
 
+    if (event_add(dnstress->ev_sigsegv, NULL) < 0)
+        fatal("failed to add SIGSEGV dnstress event");
+
+    if (event_add(dnstress->ev_sigpipe, NULL) < 0)
+        fatal("failed to add SIGPIPE dnstress event");
+
     /* put all works in a queue */
     for (size_t i = 0; i < dnstress->workers_count; i++) {
         thread_pool_add(dnstress->pool, &worker_run, &(dnstress->workers[i]));
@@ -297,11 +324,20 @@ int
 dnstress_free(struct dnstress_t *dnstress)
 {
     if (dnstress == NULL) return 0;
+
+    for (size_t i = 0; i < dnstress->workers_count; i++) {
+        pthread_mutex_lock(&dnstress->workers[i].lock);
+        dnstress->workers[i].active = false;
+        pthread_mutex_unlock(&dnstress->workers[i].lock);
+    }
+
+    if (thread_pool_kill(dnstress->pool, complete_shutdown) < 0)
+        fatal("%s: failed to kill thread pool");
+
     for (size_t i = 0; i < dnstress->workers_count; i++)
         worker_clear(&(dnstress->workers[i]));
     
     event_base_free(dnstress->evb);
-    thread_pool_kill(dnstress->pool, complete_shutdown);
     stats_free(dnstress->stats);
 
     event_free(dnstress->ev_sigint);

@@ -6,6 +6,8 @@
 #include "tcp.h"
 #include "utils.h"
 
+#define SERV_TIMEOUT 5
+
 typedef void (*op_func)(evutil_socket_t, short, void *);
 
 static struct servant_t *
@@ -59,15 +61,30 @@ get_reply_callback(servant_type_t type)
     return NULL;
 }
 
-void 
+static void
+servant_timeout(evutil_socket_t fd, short events, void *arg)
+{
+    struct servant_t *servant = (struct servant_t *) arg;
+    /* TODO: Implement servant's timeout event */
+    return;
+}
+
+int
 servant_init(struct worker_t *worker, size_t index, servant_type_t type)
 {
     /* TODO: add error codes */
-    if (worker == NULL) return;
-    if (type == UDP_TYPE && (index < 0 || index >= worker->dnstress->max_udp_servants)) return;
-    if (type == TCP_TYPE && (index < 0 || index >= worker->dnstress->max_tcp_servants)) return;
-    if (type == CLEANED) return;
+    if (worker == NULL)
+        return NULL_WORKER;
+    if (type == UDP_TYPE && (index < 0 || index >= worker->dnstress->max_udp_servants))
+        return INCORRECT_INDEX;
+    if (type == TCP_TYPE && (index < 0 || index >= worker->dnstress->max_tcp_servants))
+        return INCORRECT_INDEX;
+    if (type == CLEANED)
+        return CLEANED_ERROR;
     
+    struct timeval tv;
+    int set = 1;
+
     int sock_type = get_sock_type(type);
     struct _saddr *sstor      = NULL;
     struct servant_t *servant = NULL;
@@ -83,7 +100,11 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
     
     servant->worker_base = worker;
 
-    servant->buffer = ldns_buffer_new(PKTSIZE);
+    servant->buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
+
+#ifdef SO_NOSIGPIPE
+    setsockopt(servant->fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
+#endif
 
     if (servant->buffer == NULL)
         fatal("failed to create ldns buffer");
@@ -105,27 +126,36 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
     if ((servant->ev_recv = event_new(worker->dnstress->evb, servant->fd, 
         EV_READ | EV_PERSIST, get_reply_callback(type), servant)) == NULL)
         fatal("failed to create servant's event");
-
+    
+    if ((servant->ev_timeout = event_new(worker->dnstress->evb, -1, 0,
+        servant_timeout, servant)))
+    
+    timerclear(&tv);
+    tv.tv_sec = SERV_TIMEOUT;
+    if (event_add(servant->ev_timeout, &tv) == -1)
+        fatal("failed to add servant's timeout event");
+    
     if (event_add(servant->ev_recv, NULL) == -1)
-        fatal("failed to add servant's event");
+        fatal("failed to add servant's recv event");
 
     servant->active = true;
-    return;
+    return 0;
 
 err_return:
     close(servant->fd);
     ldns_buffer_free(servant->buffer);
     servant->buffer = NULL;
-    return;
+    return CREATE_ERROR;
 }
 
 void
 servant_clear(struct servant_t *servant)
 {
+    // log_info("%s: servant clear", __func__);
     close(servant->fd);
     event_free(servant->ev_recv);
 
-    if (servant->buffer)
+    if (servant->buffer != NULL)
         ldns_buffer_free(servant->buffer);
     
     servant->config  = NULL;
@@ -136,6 +166,8 @@ servant_clear(struct servant_t *servant)
     servant->index  = 0;
     servant->fd     = -1;
     servant->type   = CLEANED;
+
+    servant->active = false;
 }
 
 void
@@ -154,6 +186,16 @@ struct rstats_t *
 gstats(struct servant_t *servant)
 {
     if (servant == NULL)
-        fatal("%s: null servant pointer", __func__);
+        fatal("%s: null pointer servant", __func__);
+    
+    if (servant->worker_base == NULL)
+        fatal("%s: null pointer worker base", __func__);
+    
+    if (servant->worker_base->dnstress == NULL)
+        fatal("%s: null pointer dnstress", __func__);
+    
+    if (servant->worker_base->dnstress->stats == NULL)
+        fatal("%s: null pointer stats", __func__);
+    
     return servant->worker_base->dnstress->stats;
 }

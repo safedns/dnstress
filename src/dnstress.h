@@ -24,12 +24,16 @@ struct dnstress_t {
     struct event_base *evb;   /* event base */
     struct event *ev_sigint;  /* sigint event */
     struct event *ev_sigterm; /* sigterm event */
+    struct event *ev_sigsegv;
+    struct event *ev_sigpipe;
     struct event *ev_pipe;
 
     size_t max_udp_servants;
     size_t max_tcp_servants;
 
     struct rstats_t *stats;
+
+    size_t proc_worker_id;
 };
 
 struct process_pipes {
@@ -41,7 +45,8 @@ enum {
 	WORKER_PROC_FD
 };
 
-struct dnstress_t * dnstress_create(struct dnsconfig_t *config, int fd);
+struct dnstress_t * dnstress_create(struct dnsconfig_t *config, 
+    int fd, size_t proc_worker_id);
 int dnstress_run(struct dnstress_t *dnstress);
 int dnstress_free(struct dnstress_t *dnstress);
 

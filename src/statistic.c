@@ -1,7 +1,9 @@
 #include "statistic.h"
 #include "utils.h"
 
-struct rstats_t * stats_create(void) {
+struct rstats_t *
+stats_create(void)
+{
     struct rstats_t *stats = (struct rstats_t *) xmalloc_0(sizeof(struct rstats_t));
     if (pthread_mutex_init(&(stats->lock), NULL) != 0) {
         free(stats);
@@ -16,7 +18,9 @@ struct rstats_t * stats_create(void) {
     return stats;
 }
 
-void stats_free(struct rstats_t *stats) {
+void
+stats_free(struct rstats_t *stats)
+{
     pthread_mutex_destroy(&(stats->lock));
     pthread_cond_destroy(&(stats->cond));
     
@@ -24,7 +28,9 @@ void stats_free(struct rstats_t *stats) {
 }
 
 /* debugging function */
-void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant) {
+void
+__stats_update_servant(struct rstats_t *stats, struct servant_t *servant)
+{
 
     ldns_pkt *reply = ldns_pkt_new();
     ldns_buffer2pkt_wire(&reply, servant->buffer);
@@ -37,7 +43,9 @@ void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant) {
     ldns_pkt_free(reply);
 }
 
-void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer) {
+void
+stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer)
+{
     if (stats == NULL || buffer == NULL)
         fatal("%s: null argument pointer", __func__);
     
@@ -47,7 +55,9 @@ void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer) {
     ldns_pkt_free(reply);
 }
 
-void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt) {
+void
+stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt)
+{
     /* TODO: too crappy code has to be changed */
     switch (ldns_pkt_get_rcode(pkt)) {
         case LDNS_RCODE_NOERROR:
@@ -86,11 +96,6 @@ void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt) {
     }
 }
 
-/* This function should be called only from the master process to
- * collect stats data using condition variable. So, !!! DON'T USE !!!
- * this function in any other context except the communication of a parent and
- * child processes.
- */
 void
 stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
 {
@@ -121,7 +126,9 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
         fatal("%s: mutex unlock error", __func__);
 }
 
-void print_stats(struct rstats_t *stats) {
+void
+print_stats(struct rstats_t *stats)
+{
     /* TODO: PRINT RESULTS */
 
     fprintf(stderr, "\n");
@@ -145,7 +152,9 @@ void print_stats(struct rstats_t *stats) {
     fprintf(stderr, "Bye!\n");
 }
 
-void inc_rsts_fld(struct rstats_t *stats, size_t *field) {
+void
+inc_rsts_fld(struct rstats_t *stats, size_t *field)
+{
     if (pthread_mutex_lock(&(stats->lock)) != 0)
         fatal("%s: mutex lock error", __func__);
     

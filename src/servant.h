@@ -7,6 +7,12 @@
 #include <event2/event.h>
 #include <ldns/ldns.h>
 
+typedef enum {
+    TCP_TYPE,
+    UDP_TYPE,
+    CLEANED
+} servant_type_t;
+
 #include "worker.h"
 
 struct worker_t;
@@ -16,21 +22,24 @@ struct worker_t;
 #define UNDEFINED "UNDEFINED"
 
 typedef enum {
-    TCP_TYPE,
-    UDP_TYPE,
-    CLEANED
-} servant_type_t;
+    CREATE_ERROR    = -1,
+    NULL_WORKER     = -2,
+    INCORRECT_INDEX = -3,
+    CLEANED_ERROR   = -4
+} servant_error_t;
 
 struct servant_t {
     size_t index;  /* index in worker's `servants` list */
-    int fd;
+    int    fd;
 
     bool active;
     
     servant_type_t type;
     
     struct _saddr *server;
+    
     struct event  *ev_recv;
+    struct event  *ev_timeout;
 
     struct dnsconfig_t *config;
     struct worker_t    *worker_base;
@@ -39,7 +48,7 @@ struct servant_t {
 };
 
 /* FIXME: change function's arguments */
-void servant_init(struct worker_t *worker, size_t index, servant_type_t type);
+int  servant_init(struct worker_t *worker, size_t index, servant_type_t type);
 void servant_clear(struct servant_t *servant);
 
 void tcp_servant_run(struct servant_t *servant);

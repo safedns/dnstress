@@ -21,14 +21,18 @@ static m_entity_t table[] = { { MODE,       V_MODE },
 
 #define N_ENTITY (sizeof(table) / sizeof(m_entity_t))
 
-static size_t get_value(char *key) {
+static size_t
+get_value(char *key)
+{
     for (size_t i = 0; i < N_ENTITY; i++) {
         if (strcmp(key, table[i].key) == 0) return table[i].value;
     }
     return -1;
 }
 
-void usage(void) {
+void
+usage(void)
+{
     fprintf(stderr, "Usage: ./dnstress [--mode m] [--help]\n");
     fprintf(stderr, "       --mode: mode for traffic generating (low-valid by default). Available modes:\n");
     fprintf(stderr, "           udp-valid:    UDP valid packets\n");
@@ -41,7 +45,9 @@ void usage(void) {
     exit(1);
 }
 
-void parse_args(int argc, char **argv, struct dnsconfig_t *config) {
+void
+parse_args(int argc, char **argv, struct dnsconfig_t *config)
+{
     char *configfile = "./dnstress.json";
 
     for (size_t i = 1; i < argc; i++) {

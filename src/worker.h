@@ -12,6 +12,10 @@
 struct dnstress_t;
 
 struct worker_t {
+    bool active;
+    
+    pthread_mutex_t lock;
+    
     size_t index; /* worker's index in a dnstress' list of workers */
     request_mode_t mode; /* type of a request */
 
