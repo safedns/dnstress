@@ -89,7 +89,7 @@ worker_run(void *arg)
     struct worker_t * worker = (struct worker_t *) arg;
     struct timespec tim = { 0, 50000L };
 
-    while (worker->active) {
+    while (true) {
         pthread_mutex_lock(&worker->lock);
         if (!worker->active) {
             pthread_mutex_unlock(&worker->lock);
