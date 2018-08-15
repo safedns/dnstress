@@ -5,22 +5,29 @@ struct rstats_t *
 stats_create(void)
 {
     struct rstats_t *stats = (struct rstats_t *) xmalloc_0(sizeof(struct rstats_t));
-    if (pthread_mutex_init(&(stats->lock), NULL) != 0) {
-        free(stats);
-        return NULL;
-    }
 
-    if (pthread_cond_init(&(stats->cond), NULL) != 0) {
-        free(stats);
-        return NULL;
-    }
+    if (stats == NULL)
+        fatal("%s: failed to malloc stats");
+
+    if (pthread_mutex_init(&(stats->lock), NULL) != 0)
+        goto err_ret;
+
+    if (pthread_cond_init(&(stats->cond), NULL) != 0)
+        goto err_ret;
 
     return stats;
+
+err_ret:
+    free(stats);
+    return NULL;
 }
 
 void
 stats_free(struct rstats_t *stats)
 {
+    if (stats == NULL)
+        return;
+
     pthread_mutex_destroy(&(stats->lock));
     pthread_cond_destroy(&(stats->cond));
     
@@ -43,57 +50,79 @@ __stats_update_servant(struct rstats_t *stats, struct servant_t *servant)
     ldns_pkt_free(reply);
 }
 
-void
+int
 stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer)
 {
-    if (stats == NULL || buffer == NULL)
-        fatal("%s: null argument pointer", __func__);
+    if (stats == NULL)
+        return STATS_NULL;
+    if (buffer == NULL)
+        return BUFFER_NULL;
+
+    int err_code = 0;
     
-    ldns_pkt *reply = ldns_pkt_new();
+    ldns_pkt *reply = NULL;
+
     ldns_buffer2pkt_wire(&reply, buffer);
-    stats_update_pkt(stats, reply);
+    
+    if (stats_update_pkt(stats, reply) < 0)
+        err_code = UPDATE_PKT_ERROR;
+
     ldns_pkt_free(reply);
+
+    return err_code;
 }
 
-void
+int
 stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt)
 {
     /* TODO: too crappy code has to be changed */
     switch (ldns_pkt_get_rcode(pkt)) {
         case LDNS_RCODE_NOERROR:
-            inc_rsts_fld(stats, &(stats->n_noerr));
+            if (inc_rsts_fld(stats, &(stats->n_noerr)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_FORMERR:
-            inc_rsts_fld(stats, &(stats->n_formerr));
+            if (inc_rsts_fld(stats, &(stats->n_formerr)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_SERVFAIL:
-            inc_rsts_fld(stats, &(stats->n_servfail));
+            if (inc_rsts_fld(stats, &(stats->n_servfail)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NXDOMAIN:
-            inc_rsts_fld(stats, &(stats->n_nxdomain));
+            if (inc_rsts_fld(stats, &(stats->n_nxdomain)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTIMPL:
-            inc_rsts_fld(stats, &(stats->n_notimpl));
+            if (inc_rsts_fld(stats, &(stats->n_notimpl)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_REFUSED:
-            inc_rsts_fld(stats, &(stats->n_refused));
+            if (inc_rsts_fld(stats, &(stats->n_refused)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_YXDOMAIN:
-            inc_rsts_fld(stats, &(stats->n_yxdomain));
+            if (inc_rsts_fld(stats, &(stats->n_yxdomain)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_YXRRSET:
-            inc_rsts_fld(stats, &(stats->n_yxrrset));
+            if (inc_rsts_fld(stats, &(stats->n_yxrrset)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NXRRSET:
-            inc_rsts_fld(stats, &(stats->n_nxrrset));
+            if (inc_rsts_fld(stats, &(stats->n_nxrrset)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTAUTH:
-            inc_rsts_fld(stats, &(stats->n_notauth));
+            if (inc_rsts_fld(stats, &(stats->n_notauth)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTZONE:
-            inc_rsts_fld(stats, &(stats->n_notzone));
+            if (inc_rsts_fld(stats, &(stats->n_notzone)) < 0)
+                return INC_RSTS_FLD_ERROR;
             break;
     }
+    return 0;
 }
 
 void
@@ -152,9 +181,14 @@ print_stats(struct rstats_t *stats)
     fprintf(stderr, "Bye!\n");
 }
 
-void
+int
 inc_rsts_fld(struct rstats_t *stats, size_t *field)
 {
+    if (stats == NULL)
+        return STATS_NULL;
+    if (field == NULL)
+        return FIELD_NULL;
+
     if (pthread_mutex_lock(&(stats->lock)) != 0)
         fatal("%s: mutex lock error", __func__);
     
@@ -162,4 +196,6 @@ inc_rsts_fld(struct rstats_t *stats, size_t *field)
 
     if (pthread_mutex_unlock(&(stats->lock)) != 0)
         fatal("%s: mutex unlock error", __func__);
+    
+    return 0;
 }

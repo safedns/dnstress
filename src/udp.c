@@ -6,7 +6,6 @@
 void
 send_udp_query(struct servant_t *servant)
 {
-    /* FIXME: copy-paste with tcp module */
     if (perform_query(servant, ldns_udp_send_query) < 0)
         fatal("%s: error perfoming query", __func__);
 

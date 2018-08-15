@@ -48,12 +48,12 @@ struct servant_t {
 };
 
 /* FIXME: change function's arguments */
-int  servant_init(struct worker_t *worker, size_t index, servant_type_t type);
-void servant_clear(struct servant_t *servant);
+int servant_init(struct worker_t *worker, size_t index, servant_type_t type);
+int servant_clear(struct servant_t *servant);
 
 void tcp_servant_run(struct servant_t *servant);
 void udp_servant_run(struct servant_t *servant);
 
-struct rstats_t * gstats(struct servant_t *servant);
+struct rstats_t *gstats(struct servant_t *servant);
 
 #endif

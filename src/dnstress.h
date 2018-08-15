@@ -11,6 +11,11 @@
 #include "threadpool.h"
 #include "statistic.h"
 
+typedef enum {
+    DNSTRESS_NULL         = -1,
+    THREADPOOL_KILL_ERROR = -2
+} dnstress_error_t;
+
 struct dnsconfig_t;
 
 struct dnstress_t {

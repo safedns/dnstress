@@ -102,15 +102,15 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
 
     servant->buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
 
+    if (servant->fd < 0)
+        fatal("%s: failed to create a servant's socket", __func__);
+
+    if (servant->buffer == NULL)
+        fatal("%s: failed to create ldns buffer", __func__);
+
 #ifdef SO_NOSIGPIPE
     setsockopt(servant->fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
 #endif
-
-    if (servant->buffer == NULL)
-        fatal("failed to create ldns buffer");
-    
-    if (servant->fd < 0)
-        fatal("failed to create a servant's socket");
         
     if (connect(servant->fd, (struct sockaddr *) &(sstor->addr), sstor->len) < 0) {
         log_info("%s: worker: %d | servant: %d | connection error --> %s", __func__, worker->index,
@@ -139,19 +139,23 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
         fatal("failed to add servant's recv event");
 
     servant->active = true;
+    
     return 0;
 
 err_return:
     close(servant->fd);
     ldns_buffer_free(servant->buffer);
     servant->buffer = NULL;
+    
     return CREATE_ERROR;
 }
 
-void
+int
 servant_clear(struct servant_t *servant)
 {
-    // log_info("%s: servant clear", __func__);
+    if (servant == NULL)
+        return SERVANT_NULL;
+
     close(servant->fd);
     event_free(servant->ev_recv);
 
@@ -168,6 +172,8 @@ servant_clear(struct servant_t *servant)
     servant->type   = CLEANED;
 
     servant->active = false;
+
+    return 0;
 }
 
 void
@@ -186,16 +192,16 @@ struct rstats_t *
 gstats(struct servant_t *servant)
 {
     if (servant == NULL)
-        fatal("%s: null pointer servant", __func__);
+        fatal("%s: null pointer to servant", __func__);
     
     if (servant->worker_base == NULL)
-        fatal("%s: null pointer worker base", __func__);
+        fatal("%s: null pointer to worker base", __func__);
     
     if (servant->worker_base->dnstress == NULL)
-        fatal("%s: null pointer dnstress", __func__);
+        fatal("%s: null pointer to dnstress", __func__);
     
     if (servant->worker_base->dnstress->stats == NULL)
-        fatal("%s: null pointer stats", __func__);
+        fatal("%s: null pointer to stats", __func__);
     
     return servant->worker_base->dnstress->stats;
 }

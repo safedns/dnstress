@@ -179,11 +179,12 @@ struct dnsconfig_t * dnsconfig_create(void) {
     return config;
 }
 
-void dnsconfig_free(struct dnsconfig_t * config) {
+void dnsconfig_free(struct dnsconfig_t *config) {
     if (config == NULL) return;
 
-    for (size_t i = 0; i < config->addrs_count; i++)
+    for (size_t i = 0; i < config->addrs_count; i++) {
         free(config->addrs[i].repr);
+    }
 
     for (size_t i = 0; i < config->queries_count; i++) {
         free(config->queries[i].dname);
@@ -192,6 +193,11 @@ void dnsconfig_free(struct dnsconfig_t * config) {
 
     free(config->addrs);
     free(config->queries);
+    
+    config->configfile = NULL;
+    config->addrs      = NULL;
+    config->queries    = NULL;
+
     free(config);
 }
 

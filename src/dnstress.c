@@ -80,7 +80,7 @@ pworker_signal(evutil_socket_t signal, short events, void *arg)
     /* we don't want to exit because of this signal */
     if (signal == SIGPIPE)
         return;
-    
+
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);
 }
@@ -101,6 +101,8 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 	pid_t pid;
     int status;
 
+    log_warn("master: got signal: %d", signal);
+
 	switch (signal) {
 	    case SIGTERM:
 	    case SIGINT:
@@ -118,7 +120,8 @@ master_signal(evutil_socket_t signal, short events, void *arg)
 	}
 
     for (size_t i = 0; i < mst->pids_count; i++) {
-        if (kill(mst->pids[i], SIGTERM) < 0)
+        /* FIXME: infinite waiting while killing a child process */
+        if (kill(mst->pids[i], SIGINT) < 0)
             fatal("error while killing child process");
         waitpid(mst->pids[i], &status, 0);
     }
@@ -131,6 +134,11 @@ pworker(struct dnsconfig_t *config, int proc_worker_id,
     struct process_pipes *pipes)
 {
     signal(SIGPIPE, SIG_IGN);
+
+    if (config == NULL)
+        fatal("%s: null pointer to config", __func__);
+    if (pipes == NULL)
+        fatal("%s: null pointer to pipes", __func__);
 
     struct dnstress_t *dnstress = NULL;
     struct rlimit lim;
@@ -145,9 +153,9 @@ pworker(struct dnsconfig_t *config, int proc_worker_id,
     lim.rlim_max = MAX_OPEN_FD;
 
     if (setrlimit(RLIMIT_NOFILE, &lim) < 0)
-        fatal("failed to set rlimit");
+        fatal("%s: failed to set rlimit", __func__);
 
-    dnstress = dnstress_create(config, 
+    dnstress = dnstress_create(config,
         pipes[proc_worker_id].proc_fd[WORKER_PROC_FD], proc_worker_id);
 
     log_info("proc-worker: %d | dnstress created", proc_worker_id);
@@ -158,10 +166,10 @@ pworker(struct dnsconfig_t *config, int proc_worker_id,
     
     send_stats_worker(dnstress->stats, pipes, proc_worker_id);
     
-    dnstress_free(dnstress);
+    if (dnstress_free(dnstress) < 0)
+        fatal("%s: failed to free dnstress", __func__);
 
     log_info("proc-worker: %d  | dnstress closing", proc_worker_id);
-    // fprintf(stderr, "process worker is exiting\n");
 
     exit(0);
 }
@@ -238,7 +246,17 @@ master(struct process_pipes *pipes, pid_t *pids,
 struct dnstress_t *
 dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
 {   
+    if (config == NULL)
+        fatal("%s: null pointer to config", __func__);
+    if (fd < 0)
+        fatal("%s: invalid pipe fd", __func__);
+    if (proc_worker_id < 0 || proc_worker_id > 1)
+        fatal("%s: invalid process worker id", __func__);
+    
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
+
+    if (dnstress == NULL)
+        fatal("%s: null pointer to dnstress", __func__);
     
     dnstress->config        = config;
     dnstress->stats         = stats_create();
@@ -252,10 +270,10 @@ dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
     if (dnstress->stats == NULL)
         fatal("error while creating stats");
 
-    if (dnstress->stats == NULL)
-        fatal("error while creating stats");
-
     dnstress->workers = xmalloc_0(sizeof(struct worker_t) * dnstress->workers_count);
+
+    if (dnstress->workers == NULL)
+        fatal("%s: null pointer to dnstress workers", __func__);
 
     if ((dnstress->evb = event_base_new()) == NULL)
 		fatal("failed to create event base");
@@ -323,7 +341,8 @@ dnstress_run(struct dnstress_t *dnstress)
 int
 dnstress_free(struct dnstress_t *dnstress)
 {
-    if (dnstress == NULL) return 0;
+    if (dnstress == NULL)
+        return DNSTRESS_NULL;
 
     for (size_t i = 0; i < dnstress->workers_count; i++) {
         pthread_mutex_lock(&dnstress->workers[i].lock);
@@ -332,7 +351,7 @@ dnstress_free(struct dnstress_t *dnstress)
     }
 
     if (thread_pool_kill(dnstress->pool, complete_shutdown) < 0)
-        fatal("%s: failed to kill thread pool");
+        return THREADPOOL_KILL_ERROR;
 
     for (size_t i = 0; i < dnstress->workers_count; i++)
         worker_clear(&(dnstress->workers[i]));

@@ -9,6 +9,15 @@
 
 struct servant_t;
 
+typedef enum {
+    STATS_NULL         = -1,
+    PKT_NULL           = -2,
+    FIELD_NULL         = -3,
+    INC_RSTS_FLD_ERROR = -4,
+    UPDATE_PKT_ERROR   = -5,
+    UPDATE_BUF_ERROR   = -6
+} stats_error_t;
+
 struct rstats_t {
     size_t n_sent_udp;
     size_t n_recv_udp;
@@ -39,13 +48,13 @@ void stats_free(struct rstats_t * stats);
 
 /* prints to log if servant gets failed response */
 void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant);
-void stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer);
-void stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt);
+int  stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer);
+int  stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt);
 
 void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2);
 
 void print_stats(struct rstats_t *stats);
 
-void inc_rsts_fld(struct rstats_t *stats, size_t *field);
+int  inc_rsts_fld(struct rstats_t *stats, size_t *field);
 
 #endif /* __STATISTIC_H__ */
