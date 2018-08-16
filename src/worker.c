@@ -87,8 +87,9 @@ void
 worker_run(void *arg)
 {
     struct worker_t * worker = (struct worker_t *) arg;
-    struct timespec tim = { 0, 50000L };
+    struct timespec tim = { 0, 500000L };
 
+    /* infinitive loop of sending dns requests */
     while (true) {
         pthread_mutex_lock(&worker->lock);
         if (!worker->active) {
@@ -114,7 +115,7 @@ worker_run(void *arg)
         pthread_mutex_unlock(&worker->lock);
         
         if (nanosleep(&tim , NULL) < 0)
-            fatal("%s: failed to nanosleep", __func__);
+            log_warn("%s: failed to nanosleep", __func__);
     }
 }
 

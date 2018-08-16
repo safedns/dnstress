@@ -36,6 +36,8 @@ struct rstats_t {
     size_t n_nxrrset;
     size_t n_notauth;
     size_t n_notzone;
+    
+    size_t n_corrupted;
 
     pthread_mutex_t lock;
     pthread_cond_t  cond;

@@ -75,11 +75,11 @@ recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
 static void
 pworker_signal(evutil_socket_t signal, short events, void *arg)
 {
-    log_info("proc-worker: got fatal signal %d", signal);
-
     /* we don't want to exit because of this signal */
     if (signal == SIGPIPE)
         return;
+
+    log_info("proc-worker: got fatal signal %d", signal);
 
     struct dnstress_t *dnstress = (struct dnstress_t *) arg;
     event_base_loopbreak(dnstress->evb);

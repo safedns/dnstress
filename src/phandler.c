@@ -178,7 +178,7 @@ recv_reply(struct servant_t *servant, receiver_func recvr, servant_type_t type) 
                 break;
         }
 
-        if (answer == NULL)
+        if (answer == NULL || answer_size == 0)
             continue;
 
         if (reply_process(servant, answer, answer_size) < 0)
@@ -199,7 +199,7 @@ reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size)
         return BUFFER_NULL;
     if (answer == NULL)
         return ANSWER_NULL;
-    if (answer_size < 0 || answer_size >= LDNS_MAX_PACKETLEN)
+    if (answer_size <= 0 || answer_size >= LDNS_MAX_PACKETLEN)
         return INVALID_ANSWER_SIZE;
     
     struct rstats_t *stats = gstats(servant);

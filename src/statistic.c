@@ -39,8 +39,10 @@ void
 __stats_update_servant(struct rstats_t *stats, struct servant_t *servant)
 {
 
-    ldns_pkt *reply = ldns_pkt_new();
-    ldns_buffer2pkt_wire(&reply, servant->buffer);
+    ldns_pkt *reply = NULL;
+
+    if (ldns_buffer2pkt_wire(&reply, servant->buffer) != LDNS_STATUS_OK)
+        fatal("%s: failed to convert buffer to pkt wire", __func__);
     
     if (ldns_pkt_get_rcode(reply) == LDNS_RCODE_SERVFAIL)
         log_warn("worker: %d | servant: %d | servfail!",
@@ -59,11 +61,19 @@ stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer)
         return BUFFER_NULL;
 
     int err_code = 0;
+    ldns_status status;
     
+    // ldns_pkt *reply = ldns_pkt_new();
     ldns_pkt *reply = NULL;
 
-    ldns_buffer2pkt_wire(&reply, buffer);
-    
+    if (ldns_buffer2pkt_wire(&reply, buffer) != LDNS_STATUS_OK) {
+        if (inc_rsts_fld(stats, &(stats->n_corrupted)) < 0) {
+            // fprintf(stderr, "%zu", stats->n_sent_udp);
+            fatal("%s: failed to increment n_corrupted field", __func__);
+        }
+        return 0;
+    }
+
     if (stats_update_pkt(stats, reply) < 0)
         err_code = UPDATE_PKT_ERROR;
 
@@ -149,6 +159,8 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
     stats1->n_notauth  += stats2->n_notauth;
     stats1->n_notzone  += stats2->n_notzone;
 
+    stats1->n_corrupted += stats2->n_corrupted;
+
     stats1->__call_num++;
 
     if (pthread_mutex_unlock(&(stats1->lock)) != 0)
@@ -172,6 +184,7 @@ print_stats(struct rstats_t *stats)
     fprintf(stderr, "                  \n");
     fprintf(stderr, "     ==== ERRORS ====\n");
     fprintf(stderr, "     [+] NO ERRORS:       %zu\n", stats->n_noerr);
+    fprintf(stderr, "     [-] CORRUPTED:       %zu\n", stats->n_corrupted);
     fprintf(stderr, "     [-] FORMAT ERROR:    %zu\n", stats->n_formerr);
     fprintf(stderr, "     [-] SERVER FAILURE:  %zu\n", stats->n_servfail);
     fprintf(stderr, "     [-] NAME ERROR:      %zu\n", stats->n_nxdomain);
@@ -184,10 +197,14 @@ print_stats(struct rstats_t *stats)
 int
 inc_rsts_fld(struct rstats_t *stats, size_t *field)
 {
-    if (stats == NULL)
+    if (stats == NULL) {
+        fprintf(stderr, "null stats");
         return STATS_NULL;
-    if (field == NULL)
+    }
+    if (field == NULL) {
+        fprintf(stderr, "null field");
         return FIELD_NULL;
+    }
 
     if (pthread_mutex_lock(&(stats->lock)) != 0)
         fatal("%s: mutex lock error", __func__);
