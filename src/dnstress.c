@@ -28,8 +28,8 @@
 // #define MAX_UDP_SERVANTS 200
 // #define MAX_TCP_SERVANTS 20
 
-#define MAX_UDP_SERVANTS 1
-#define MAX_TCP_SERVANTS 1
+#define MAX_UDP_SERVANTS 200
+#define MAX_TCP_SERVANTS 20
 #define MAX_WORKERS      1000
 
 #define MAX_OPEN_FD 1000000
@@ -40,13 +40,13 @@
  * workers and master process
  */
 struct __mst {
-    struct event_base    *evb;
-    pid_t                *pids;
-    size_t                pids_count;
+    struct event_base *evb;
+    pid_t *pids;
+    size_t pids_count;
     
     struct process_pipes *pipes;
 
-    struct rstats_t      *stats;
+    struct rstats_t *stats;
 };
 
 static void

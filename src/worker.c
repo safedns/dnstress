@@ -87,7 +87,7 @@ void
 worker_run(void *arg)
 {
     struct worker_t * worker = (struct worker_t *) arg;
-    struct timespec tim = { 0, 500000L };
+    struct timespec tim = { 0, 50000000L };
 
     /* infinitive loop of sending dns requests */
     while (true) {
