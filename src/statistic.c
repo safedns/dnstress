@@ -2,24 +2,57 @@
 #include "utils.h"
 
 struct rstats_t *
-stats_create(void)
+stats_create(struct dnsconfig_t *config)
 {
-    struct rstats_t *stats = (struct rstats_t *) xmalloc_0(sizeof(struct rstats_t));
+    if (config == NULL)
+        fatal("%s: null pointer to config", __func__);
+
+    struct rstats_t     *stats      = xmalloc_0(sizeof(struct rstats_t));
+    struct serv_stats_t *serv_stats = xmalloc_0(sizeof(struct serv_stats_t) * config->addrs_count);
 
     if (stats == NULL)
-        fatal("%s: failed to malloc stats");
+        fatal("%s: failed to malloc stats", __func__);
+    if (serv_stats == NULL)
+        fatal("%s: failed to malloc serv stats", __func__);
 
-    if (pthread_mutex_init(&(stats->lock), NULL) != 0)
+    if (pthread_mutex_init(&stats->lock, NULL) != 0)
         goto err_ret;
 
-    if (pthread_cond_init(&(stats->cond), NULL) != 0)
+    if (pthread_cond_init(&stats->cond, NULL) != 0)
         goto err_ret;
+
+    for (size_t i = 0; i < config->addrs_count; i++) {
+        serv_stats[i].server = &config->addrs[i];
+    }
+
+    serv_stats->lock = &stats->lock;
+    serv_stats->cond = &stats->cond;
+
+    stats->servs       = serv_stats;
+    stats->servs_count = config->addrs_count;
+    stats->config      = config;
+    stats->tmp_struct  = false;
 
     return stats;
 
 err_ret:
     free(stats);
+    free(serv_stats);
+    
     return NULL;
+}
+
+struct rstats_t *
+stats_create_tmp(void)
+{
+    struct rstats_t *stats = xmalloc_0(sizeof(struct rstats_t));
+
+    if (stats == NULL)
+        fatal("%s: failed to malloc tmp stats", __func__);
+
+    stats->tmp_struct = true;
+
+    return stats;
 }
 
 void
@@ -28,10 +61,35 @@ stats_free(struct rstats_t *stats)
     if (stats == NULL)
         return;
 
-    pthread_mutex_destroy(&(stats->lock));
-    pthread_cond_destroy(&(stats->cond));
+    if (!stats->tmp_struct) {
+        pthread_mutex_destroy(&stats->lock);
+        pthread_cond_destroy(&stats->cond);
+    }
+
+    if (stats->servs) {
+        for (size_t i = 0; i < stats->servs_count; i++) {
+            stats->servs[i].server = NULL;
+            stats->servs[i].lock   = NULL;
+            stats->servs[i].cond   = NULL;
+        }
+        free(stats->servs);
+    }
+    
+    stats->servs  = NULL;
+    stats->config = NULL;
     
     free(stats);
+}
+
+static struct serv_stats_t *
+get_serv_stats_addr(const struct rstats_t *stats, const struct _saddr *addr)
+{
+    for (size_t i = 0; i < stats->servs_count; i++) {
+        if (stats->servs[i].server->id == addr->id)
+            return &stats->servs[i];
+    }
+    log_warn("%s: serv_stats wasn't found", __func__);
+    return NULL;
 }
 
 /* debugging function */
@@ -52,29 +110,66 @@ __stats_update_servant(struct rstats_t *stats, struct servant_t *servant)
     ldns_pkt_free(reply);
 }
 
+static int
+update_stats_entity(struct stats_entity_t *entity1,
+    const struct stats_entity_t *entity2)
+{
+    if (entity1 == NULL || entity2 == NULL)
+        return ENTITY_NULL;
+
+    entity1->n_sent += entity2->n_sent;
+    entity1->n_recv += entity2->n_recv;
+
+    entity1->n_noerr    += entity2->n_noerr;
+    entity1->n_formerr  += entity2->n_formerr;
+    entity1->n_servfail += entity2->n_servfail;
+    entity1->n_nxdomain += entity2->n_nxdomain;
+    entity1->n_notimpl  += entity2->n_notimpl;
+    entity1->n_refused  += entity2->n_refused;
+    entity1->n_yxdomain += entity2->n_yxdomain;
+    entity1->n_yxrrset  += entity2->n_yxrrset;
+    entity1->n_nxrrset  += entity2->n_nxrrset;
+    entity1->n_notauth  += entity2->n_notauth;
+    entity1->n_notzone  += entity2->n_notzone;
+
+    entity1->n_corrupted += entity2->n_corrupted;
+    
+    return 0;
+}
+
 int
-stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer)
+stats_update_buf(struct rstats_t *stats, const struct _saddr *server,
+    const ldns_buffer *buffer, const bool udp_type)
 {
     if (stats == NULL)
         return STATS_NULL;
+    if (stats->servs == NULL)
+        return SERV_STATS_NULL;
+    if (server == NULL)
+        return ADDR_NULL;
     if (buffer == NULL)
         return BUFFER_NULL;
 
     int err_code = 0;
     ldns_status status;
     
-    // ldns_pkt *reply = ldns_pkt_new();
     ldns_pkt *reply = NULL;
 
+    struct serv_stats_t *sv_stats = get_serv_stats_addr(stats, server);
+
+    if (sv_stats == NULL) {
+        log_warn("%s: failed to get serv_stats", __func__);
+        return SERV_STATS_NULL;
+    }
+
     if (ldns_buffer2pkt_wire(&reply, buffer) != LDNS_STATUS_OK) {
-        if (inc_rsts_fld(stats, &(stats->n_corrupted)) < 0) {
-            // fprintf(stderr, "%zu", stats->n_sent_udp);
+        if (inc_rsts_fld(stats, &sv_stats->n_corrupted) < 0) {
             fatal("%s: failed to increment n_corrupted field", __func__);
         }
         return 0;
     }
 
-    if (stats_update_pkt(stats, reply) < 0)
+    if (stats_update_pkt(sv_stats, reply, udp_type) < 0)
         err_code = UPDATE_PKT_ERROR;
 
     ldns_pkt_free(reply);
@@ -83,52 +178,58 @@ stats_update_buf(struct rstats_t *stats, const ldns_buffer *buffer)
 }
 
 int
-stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt)
+stats_update_pkt(struct serv_stats_t *sv_stats, const ldns_pkt *pkt, 
+    const bool udp_conn)
 {
+    struct stats_entity_t *entity = NULL;
+    
+    if (udp_conn)
+        entity = stats->servs
+    
     /* TODO: too crappy code has to be changed */
     switch (ldns_pkt_get_rcode(pkt)) {
         case LDNS_RCODE_NOERROR:
-            if (inc_rsts_fld(stats, &(stats->n_noerr)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_noerr) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_FORMERR:
-            if (inc_rsts_fld(stats, &(stats->n_formerr)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_formerr) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_SERVFAIL:
-            if (inc_rsts_fld(stats, &(stats->n_servfail)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_servfail) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NXDOMAIN:
-            if (inc_rsts_fld(stats, &(stats->n_nxdomain)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_nxdomain) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTIMPL:
-            if (inc_rsts_fld(stats, &(stats->n_notimpl)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_notimpl) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_REFUSED:
-            if (inc_rsts_fld(stats, &(stats->n_refused)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_refused) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_YXDOMAIN:
-            if (inc_rsts_fld(stats, &(stats->n_yxdomain)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_yxdomain) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_YXRRSET:
-            if (inc_rsts_fld(stats, &(stats->n_yxrrset)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_yxrrset) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NXRRSET:
-            if (inc_rsts_fld(stats, &(stats->n_nxrrset)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_nxrrset) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTAUTH:
-            if (inc_rsts_fld(stats, &(stats->n_notauth)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_notauth) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case LDNS_RCODE_NOTZONE:
-            if (inc_rsts_fld(stats, &(stats->n_notzone)) < 0)
+            if (inc_rsts_fld(stats, &stats->n_notzone) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
     }
@@ -138,33 +239,37 @@ stats_update_pkt(struct rstats_t *stats, const ldns_pkt *pkt)
 void
 stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
 {
-    if (pthread_mutex_lock(&(stats1->lock)) != 0)
+    if (pthread_mutex_lock(&stats1->lock) != 0)
         fatal("%s: mutex lock error", __func__);
 
-    stats1->n_sent_udp += stats2->n_sent_udp;
-    stats1->n_recv_udp += stats2->n_recv_udp;
+    for (size_t i = 0; i < stats1->servs_count; i++) {
+        struct serv_stats_t *sv_stats1 = &stats1->servs[i];
+        struct serv_stats_t *sv_stats2 = get_serv_stats_addr(stats2, sv_stats1->server);
 
-    stats1->n_sent_tcp += stats2->n_sent_tcp;
-    stats1->n_recv_tcp += stats2->n_recv_tcp;
+        if (sv_stats2 == NULL)
+            fatal("%s: failed to get serv stats by addr", __func__);
 
-    stats1->n_noerr    += stats2->n_noerr;
-    stats1->n_formerr  += stats2->n_formerr;
-    stats1->n_servfail += stats2->n_servfail;
-    stats1->n_nxdomain += stats2->n_nxdomain;
-    stats1->n_notimpl  += stats2->n_notimpl;
-    stats1->n_refused  += stats2->n_refused;
-    stats1->n_yxdomain += stats2->n_yxdomain;
-    stats1->n_yxrrset  += stats2->n_yxrrset;
-    stats1->n_nxrrset  += stats2->n_nxrrset;
-    stats1->n_notauth  += stats2->n_notauth;
-    stats1->n_notzone  += stats2->n_notzone;
+        if (update_stats_entity(&sv_stats1->tcp_serv,
+            &sv_stats2->tcp_serv) < 0)
+            fatal("%s: failed to update tcp stats entity", __func__);
+        if (update_stats_entity(&sv_stats1->udp_serv,
+            &sv_stats2->udp_serv) < 0)
+            fatal("%s: failed to update udp stats entity", __func__);
 
-    stats1->n_corrupted += stats2->n_corrupted;
+        stats1->__call_num++;
+    }
 
-    stats1->__call_num++;
-
-    if (pthread_mutex_unlock(&(stats1->lock)) != 0)
+    if (pthread_mutex_unlock(&stats1->lock) != 0)
         fatal("%s: mutex unlock error", __func__);
+}
+
+struct serv_stats_t *
+get_serv_stats_servant(struct servant_t *servant)
+{
+    struct rstats_t *stats = gstats(servant);
+    struct serv_stats_t *sv_stats = get_serv_stats_addr(stats, servant->server);
+
+    return sv_stats;
 }
 
 void
@@ -195,23 +300,19 @@ print_stats(struct rstats_t *stats)
 }
 
 int
-inc_rsts_fld(struct rstats_t *stats, size_t *field)
+inc_rsts_fld(struct serv_stats_t *sv_stats, size_t *field)
 {
-    if (stats == NULL) {
-        fprintf(stderr, "null stats");
+    if (sv_stats == NULL)
         return STATS_NULL;
-    }
-    if (field == NULL) {
-        fprintf(stderr, "null field");
+    if (field == NULL)
         return FIELD_NULL;
-    }
 
-    if (pthread_mutex_lock(&(stats->lock)) != 0)
+    if (pthread_mutex_lock(&sv_stats->lock) != 0)
         fatal("%s: mutex lock error", __func__);
     
     *field = *field + 1;
 
-    if (pthread_mutex_unlock(&(stats->lock)) != 0)
+    if (pthread_mutex_unlock(&sv_stats->lock) != 0)
         fatal("%s: mutex unlock error", __func__);
     
     return 0;

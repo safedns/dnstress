@@ -9,10 +9,8 @@ send_tcp_query(struct servant_t *servant)
     if (perform_query(servant, ldns_tcp_send_query) < 0)
         fatal("%s: error perfoming query", __func__);
 
-    struct rstats_t *stats = gstats(servant);
-    inc_rsts_fld(stats, &stats->n_sent_tcp);
-
-    ldns_buffer_clear(servant->buffer);
+    struct serv_stats_t *sv_stats = get_serv_stats_servant(servant);
+    inc_rsts_fld(sv_stats, &sv_stats->tcp_serv.n_sent);
 
     /* debug output */
     // fprintf(stderr, "%zu\r", stats->n_sent_tcp);

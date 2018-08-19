@@ -25,9 +25,6 @@
 #include "utils.h"
 #include "log.h"
 
-// #define MAX_UDP_SERVANTS 200
-// #define MAX_TCP_SERVANTS 20
-
 #define MAX_UDP_SERVANTS 200
 #define MAX_TCP_SERVANTS 20
 #define MAX_WORKERS      1000
@@ -61,7 +58,7 @@ send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
 static void
 recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
 {
-    struct rstats_t *r_stats = stats_create();
+    struct rstats_t *r_stats = stats_create(stats->config);
 
     ssize_t recv = read(fd, r_stats, sizeof(*r_stats));
 
@@ -175,8 +172,8 @@ pworker(struct dnsconfig_t *config, int proc_worker_id,
 }
 
 static void
-master(struct process_pipes *pipes, pid_t *pids,
-    const size_t wcount)
+master(struct dnsconfig_t *config, struct process_pipes *pipes,
+    pid_t *pids, const size_t wcount)
 {
     signal(SIGPIPE, SIG_IGN);
 
@@ -188,7 +185,7 @@ master(struct process_pipes *pipes, pid_t *pids,
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
 
-    struct rstats_t *stats = stats_create();
+    struct rstats_t *stats = stats_create(config);
 
     if (stats == NULL)
         fatal("%s: failed to create stats", __func__);
@@ -259,7 +256,7 @@ dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
         fatal("%s: null pointer to dnstress", __func__);
     
     dnstress->config        = config;
-    dnstress->stats         = stats_create();
+    dnstress->stats         = stats_create(config);
     dnstress->workers_count = config->addrs_count;
 
     dnstress->proc_worker_id = proc_worker_id;
@@ -421,7 +418,7 @@ main(int argc, char **argv)
 
     fprintf(stderr, "[+] process workers are starting...\n\n");
 
-    master(pipes, pids, config->workers_count);
+    master(config, pipes, pids, config->workers_count);
 
     free(pipes);
     dnsconfig_free(config);

@@ -39,8 +39,10 @@ typedef enum {
 
 struct _saddr {
     struct sockaddr_storage addr;
-    char *repr;
     socklen_t len;
+
+    char *repr;
+    size_t id;
 };
 
 struct dnsconfig_t {

@@ -149,6 +149,9 @@ perform_query(struct servant_t *servant, sender_func send_query)
     //     break;
     // }
     // }
+
+    ldns_buffer_clear(servant->buffer);
+
     return sent;
 }
 
@@ -201,16 +204,17 @@ reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size)
         return ANSWER_NULL;
     if (answer_size <= 0 || answer_size >= LDNS_MAX_PACKETLEN)
         return INVALID_ANSWER_SIZE;
-    
-    struct rstats_t *stats = gstats(servant);
+
+    struct rstats_t     *stats    = gstats(servant);
+    struct serv_stats_t *sv_stats = get_serv_stats_servant(servant);
 
     switch (servant->type) {
         case TCP_TYPE:
-            if (inc_rsts_fld(stats, &(stats->n_recv_tcp)) < 0)
+            if (inc_rsts_fld(sv_stats, &sv_stats->tcp_serv.n_recv) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         case UDP_TYPE:
-            if (inc_rsts_fld(stats, &(stats->n_recv_udp)) < 0)
+            if (inc_rsts_fld(sv_stats, &sv_stats->udp_serv.n_recv) < 0)
                 return INC_RSTS_FLD_ERROR;
             break;
         default:
@@ -220,7 +224,10 @@ reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size)
     ldns_buffer_clear(servant->buffer);
     ldns_buffer_write(servant->buffer, answer, answer_size);
 
-    if (stats_update_buf(stats, servant->buffer) < 0)
+    bool udp_type = servant->type == UDP_TYPE;
+
+    if (stats_update_buf(stats, servant->server,
+        servant->buffer, udp_type) < 0)
         return UPDATE_BUF_ERROR;
 
     return 0;

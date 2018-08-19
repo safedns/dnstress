@@ -87,6 +87,7 @@ static void process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens,
             default:
                 fatal("unknown address family");
         }
+        config->addrs[j].id   = j;
         config->addrs[j].repr = strdup(obj);
     }
     *index = __index;
