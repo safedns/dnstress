@@ -72,13 +72,14 @@ struct rstats_t * stats_create_tmp(void);
 void stats_free(struct rstats_t * stats);
 
 /* prints to log if servant gets failed response */
-void __stats_update_servant(struct rstats_t *stats, struct servant_t *servant);
+void __stats_update_servant(struct rstats_t *stats, 
+    const struct servant_t *servant, const servant_type_t conn_type);
 
 /* refactor these functions, cause arguments are too crapy */
 int stats_update_buf(struct rstats_t *stats, const struct _saddr *addr, 
-    const ldns_buffer *buffer, const bool udp_conn);
+    const ldns_buffer *buffer, const servant_type_t conn_type);
 int stats_update_pkt(struct serv_stats_t *sv_stats, const ldns_pkt *pkt, 
-    const bool udp_conn);
+    const servant_type_t conn_type);
 
 void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2);
 

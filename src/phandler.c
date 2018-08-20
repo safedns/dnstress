@@ -224,10 +224,8 @@ reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size)
     ldns_buffer_clear(servant->buffer);
     ldns_buffer_write(servant->buffer, answer, answer_size);
 
-    bool udp_type = servant->type == UDP_TYPE;
-
     if (stats_update_buf(stats, servant->server,
-        servant->buffer, udp_type) < 0)
+        servant->buffer, servant->type) < 0)
         return UPDATE_BUF_ERROR;
 
     return 0;

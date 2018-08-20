@@ -24,6 +24,7 @@
 #include "argparser.h"
 #include "utils.h"
 #include "log.h"
+#include "proc.h"
 
 #define MAX_UDP_SERVANTS 200
 #define MAX_TCP_SERVANTS 20
@@ -50,7 +51,9 @@ static void
 send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
     size_t worker_id)
 {
-    ssize_t wrote = write(pipes[worker_id].proc_fd[WORKER_PROC_FD], stats, sizeof(*stats));
+    int fd = pipes[worker_id].proc_fd[WORKER_PROC_FD];
+
+    ssize_t wrote = proc_transmit_rstats(fd, stats);
  
     log_info("proc-worker: %zu | wrote %ld bytes to master", worker_id, wrote);
 }
@@ -60,12 +63,11 @@ recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
 {
     struct rstats_t *r_stats = stats_create(stats->config);
 
-    ssize_t recv = read(fd, r_stats, sizeof(*r_stats));
+    ssize_t recv = proc_obtain_rstats(fd, r_stats);
 
     log_info("master: received %ld bytes from a worker", recv);
 
-    stats_update_stats(stats, r_stats);
-    
+    stats_update_stats(stats, r_stats);    
     stats_free(r_stats);
 }
 
@@ -318,8 +320,8 @@ dnstress_run(struct dnstress_t *dnstress)
     if (event_add(dnstress->ev_sigterm, NULL) < 0)
         fatal("failed to add SIGTERM dnstress event");
 
-    if (event_add(dnstress->ev_sigsegv, NULL) < 0)
-        fatal("failed to add SIGSEGV dnstress event");
+    // if (event_add(dnstress->ev_sigsegv, NULL) < 0)
+    //     fatal("failed to add SIGSEGV dnstress event");
 
     if (event_add(dnstress->ev_sigpipe, NULL) < 0)
         fatal("failed to add SIGPIPE dnstress event");
