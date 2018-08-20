@@ -293,21 +293,50 @@ get_serv_stats_servant(struct servant_t *servant)
     return sv_stats;
 }
 
+static size_t
+calc_errs(const struct stats_entity_t *entity)
+{
+    return  entity->n_formerr +
+            entity->n_servfail +
+            entity->n_nxdomain +
+            entity->n_notimpl +
+            entity->n_refused +
+            entity->n_yxdomain +
+            entity->n_yxrrset +
+            entity->n_nxrrset +
+            entity->n_notauth +
+            entity->n_notzone +
+            entity->n_corrupted;
+}
+
 static float
 perc(size_t first, size_t second)
 {
     if (first == 0)
-        return 100;
+        return 0;
+    if (second == 0)
+        return 0;
     return (float) first / second * 100;
 }
 
 void
 print_stats(struct rstats_t *stats)
 {
+    char *stick = NULL;
+    char *angle = NULL;
+    
     fprintf(stderr, "\n");
-    fprintf(stderr, "   STRESS STATISTIC\n");
+    fprintf(stderr, "   STRESS STATISTIC\n\n");
     
     for (size_t i = 0; i < stats->servs_count; i++) {
+        if (i < stats->servs_count - 1) {
+            stick = "│";
+            angle = "├";
+        } else {
+            stick = " ";
+            angle = "└";
+        }
+        
         struct serv_stats_t   *sv_stats = &stats->servs[i];
         
         struct stats_entity_t *tcp_ent  = get_entity(sv_stats, TCP_TYPE);
@@ -322,26 +351,39 @@ print_stats(struct rstats_t *stats)
         if (udp_ent == NULL)
             fatal("%s: failed to get udp entity", __func__);
 
-        float qr_udp_loss = 100.0 - perc(udp_ent->n_recv, udp_ent->n_sent);
-        float nc_udp_loss = 100.0 - perc(udp_ent->n_corrupted, udp_ent->n_noerr);
+        float udp_tr_loss = 100.0 - perc(udp_ent->n_recv, udp_ent->n_sent);
+        float udp_rc_loss = perc(calc_errs(udp_ent), udp_ent->n_noerr);
         
-        float qr_tcp_loss = 100.0 - perc(tcp_ent->n_recv, tcp_ent->n_sent);
-        float nc_tcp_loss = 100.0 - perc(tcp_ent->n_corrupted, tcp_ent->n_noerr);
+        float tcp_tr_loss = 100.0 - perc(tcp_ent->n_recv, tcp_ent->n_sent);
+        float tcp_rc_loss = perc(calc_errs(tcp_ent), tcp_ent->n_noerr);
 
-        fprintf(stderr, "    ### %s\n", addr_repr); // address representation
-
-        fprintf(stderr, "      ==== UDP ====\n");
-        fprintf(stderr, "        queries: %zu  |  responses: %zu  |  loss: %.2f%%\n",
-            udp_ent->n_sent,  udp_ent->n_recv,      qr_udp_loss);
-        fprintf(stderr, "        noerr: %zu  |  corrupted: %zu  |  loss: %.2f%%\n",
-            udp_ent->n_noerr, udp_ent->n_corrupted, nc_udp_loss);
-        fprintf(stderr, "                   \n");
-        fprintf(stderr, "      ==== TCP ====\n");
-        fprintf(stderr, "        queries: %zu  |  responses: %zu  |  loss: %.2f%%\n",
-            tcp_ent->n_sent,  tcp_ent->n_recv,      qr_tcp_loss);
-        fprintf(stderr, "        noerr: %zu  |  corrupted: %zu  |  loss: %.2f%%\n",
-            tcp_ent->n_noerr, tcp_ent->n_corrupted, nc_tcp_loss);
-        fprintf(stderr, "                   \n");
+        fprintf(stderr, "    %s─ %s\n", angle, addr_repr); // address representation
+        fprintf(stderr, "    %s    ├─── UDP\n", stick);
+        fprintf(stderr, "    %s    │    ├── TRANSMITTING INFO\n", stick);
+        fprintf(stderr, "    %s    │    │   ├─ queries:   %zu\n", stick, udp_ent->n_sent);
+        fprintf(stderr, "    %s    │    │   ├─ responses: %zu\n", stick, udp_ent->n_recv);
+        fprintf(stderr, "    %s    │    │   └─ loss:      %.2f%%\n", stick, udp_tr_loss);
+        fprintf(stderr, "    %s    │    │          \n", stick);
+        fprintf(stderr, "    %s    │    └── RESPONSE CODES\n", stick);
+        fprintf(stderr, "    %s    │        ├─ noerr:     %zu\n",stick, udp_ent->n_noerr);
+        fprintf(stderr, "    %s    │        ├─ corrupted: %zu\n",stick, udp_ent->n_corrupted);
+        fprintf(stderr, "    %s    │        ├─ formaerr:  %zu\n", stick, udp_ent->n_formerr);
+        fprintf(stderr, "    %s    │        ├─ servfail:  %zu\n", stick, udp_ent->n_servfail);
+        fprintf(stderr, "    %s    │        └─ errors:    %.2f%%\n", stick, udp_rc_loss);
+        fprintf(stderr, "    %s    │               \n", stick);
+        fprintf(stderr, "    %s    └─── TCP\n", stick);
+        fprintf(stderr, "    %s         ├── TRANSMITTING INFO\n", stick);
+        fprintf(stderr, "    %s         │   ├─ queries:   %zu\n", stick, tcp_ent->n_sent);
+        fprintf(stderr, "    %s         │   ├─ responses: %zu\n", stick, tcp_ent->n_recv);
+        fprintf(stderr, "    %s         │   └─ loss:      %.2f%%\n", stick, tcp_tr_loss);
+        fprintf(stderr, "    %s         │          \n", stick);
+        fprintf(stderr, "    %s         └── RESPONSE CODES\n", stick);
+        fprintf(stderr, "    %s             ├─ noerr:     %zu\n", stick, tcp_ent->n_noerr);
+        fprintf(stderr, "    %s             ├─ corrupted: %zu\n", stick, tcp_ent->n_corrupted);
+        fprintf(stderr, "    %s             ├─ formaerr:  %zu\n", stick, tcp_ent->n_formerr);
+        fprintf(stderr, "    %s             ├─ servfail:  %zu\n", stick, tcp_ent->n_servfail);
+        fprintf(stderr, "    %s             └─ errors:    %.2f%%\n", stick, tcp_rc_loss);
+        fprintf(stderr, "    %s                   \n", stick);
         // fprintf(stderr, "      ==== ERRORS ====\n");
         // fprintf(stderr, "        [+] NO ERRORS:       %zu\n", stats->n_noerr);
         // fprintf(stderr, "        [-] CORRUPTED:       %zu\n", stats->n_corrupted);
@@ -350,8 +392,8 @@ print_stats(struct rstats_t *stats)
         // fprintf(stderr, "        [-] NAME ERROR:      %zu\n", stats->n_nxdomain);
         // fprintf(stderr, "        [-] NOT IMPLEMENTED: %zu\n", stats->n_notimpl);
         // fprintf(stderr, "        [-] REFUSED:         %zu\n", stats->n_refused);
-        fprintf(stderr, "\n");
     }
+    fprintf(stderr, "\n");
 }
 
 int

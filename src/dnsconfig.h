@@ -15,8 +15,10 @@ typedef enum {
     SHUFFLE        /* any DNS requests */
 } request_mode_t;
 
+#include "network.h"
 #include "jsmn.h"
 #include "phandler.h"
+
 
 #define START_SIZE           32
 #define MAX_NUMBER_OF_TOKENS 100000*2
@@ -60,6 +62,9 @@ struct dnsconfig_t {
 
 struct dnsconfig_t * dnsconfig_create(void);
 void dnsconfig_free(struct dnsconfig_t * config);
+
+const char * parse_sockaddr(struct sockaddr_storage *sock,
+    char *host, const in_port_t __port);
 
 int parse_config(struct dnsconfig_t *config, char *filename);
 

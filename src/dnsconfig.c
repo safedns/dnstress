@@ -1,5 +1,10 @@
 #include <string.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#include <bsd/stdlib.h>
 
 #include "jsmn.h"
 #include "dnsconfig.h"
@@ -46,12 +51,75 @@ static void validate_config(struct dnsconfig_t *config) {
     }
 }
 
+const char *
+parse_sockaddr(struct sockaddr_storage *sock, char *host, const in_port_t __port)
+{
+	const char *errstr = NULL;
+    
+    size_t n_colon  = 0;
+    size_t host_len = strlen(host);
+
+    in_port_t port = __port;
+
+    /* count colons to determine address type */
+    for (size_t i = 0; i < host_len; i++)
+        if (host[i] == ':') n_colon++;
+
+    if (n_colon <= 1) {
+        /* IPv4 case */
+
+        char *colon = NULL;
+        struct sockaddr_in *sin = (struct sockaddr_in *) sock;
+
+        if ((colon = strchr(host, ':')) != NULL) {
+            *colon++ = '\0';
+
+            port = strtonum(colon, 0, USHRT_MAX, &errstr);
+            if (errstr != NULL)
+                return errstr;
+        }
+
+        if (inet_pton(AF_INET, host, &(sin->sin_addr)) != 1)
+            return "Failed to parse IPv4 address";
+
+        sin->sin_family = AF_INET;
+        sin->sin_port   = htons(port);
+    } else {
+        /* IPv6 case */
+        
+        char * closed_bracket = NULL;
+        struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) sock;
+        
+        if (host[0] == '[') {
+            if ((closed_bracket = strchr(host, ']')) != NULL)
+                *closed_bracket++ = '\x00';
+            else
+                return "Incorrect IPv6 address: unclosed brackets";
+            
+            host++;
+            closed_bracket++;
+
+            port = strtonum(closed_bracket, 0, USHRT_MAX, &errstr);
+            if (errstr != NULL)
+                return errstr;
+        }
+
+        if (inet_pton(AF_INET6, host, &(sin6->sin6_addr)) != 1)
+            return "Failed to parse IPv6 address";
+        
+        sin6->sin6_family = AF_INET6;
+        sin6->sin6_port   = htons(port);
+    }
+
+	return NULL;
+}
+
 static void process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens, 
         char *content, char *obj, size_t *index) {
     
     size_t __index = *index;
-    struct sockaddr_in  sock4;
-    struct sockaddr_in6 sock6;
+    
+    struct sockaddr_storage sstor;
 
     if (tokens[__index].type != JSMN_ARRAY) 
         fatal("error in the config json file: array expected");
@@ -64,29 +132,29 @@ static void process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens,
     config->addrs_count = addrs_len;
 
     for (size_t j = 0; j < addrs_len; j++) {
+        const char * errmsg = NULL;
+        
         __index++;
         get_object(tokens, content, __index, obj);
-        /* FIXME: replace this switch with more flexible variant (using casts) */
-        switch (get_addrfamily(obj)) {
+        
+        memset(&sstor, 0, sizeof(sstor));
+
+        if ((errmsg = parse_sockaddr(&sstor, obj, DNS_PORT)) != NULL)
+            fatal("%s: failed to parse IP address: %s", __func__, errmsg);
+        
+        switch (sstor.ss_family) {
             case AF_INET:
-                memset(&sock4, 0, sizeof(sock4));
-                sock4.sin_family = AF_INET;
-                inet_pton(AF_INET, obj, &(sock4.sin_addr));
-                sock4.sin_port = htons(DNS_PORT); /* TODO: make custom port */
-                memcpy(&(config->addrs[j].addr), &sock4, sizeof(sock4));
                 config->addrs[j].len = sizeof(struct sockaddr_in);
                 break;
             case AF_INET6:
-                memset(&sock6, 0, sizeof(sock6));
-                sock6.sin6_family = AF_INET6;
-                inet_pton(AF_INET, obj, &(sock6.sin6_addr));
-                sock6.sin6_port = htons(DNS_PORT); /* TODO: make custom port */
-                memcpy(&(config->addrs[j].addr), &sock6, sizeof(sock6));
                 config->addrs[j].len = sizeof(struct sockaddr_in6);
                 break;
             default:
                 fatal("unknown address family");
         }
+        
+        memcpy(&(config->addrs[j].addr), &sstor, sizeof(sstor));
+
         config->addrs[j].id   = j;
         config->addrs[j].repr = strdup(obj);
     }
