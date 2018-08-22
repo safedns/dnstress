@@ -52,9 +52,15 @@ static void validate_config(struct dnsconfig_t *config) {
 }
 
 const char *
-parse_sockaddr(struct sockaddr_storage *sock, char *host, const in_port_t __port)
+parse_sockaddr(struct sockaddr_storage *sock, char *__host, const in_port_t __port)
 {
 	const char *errstr = NULL;
+
+    char *host     = strdup(__host);
+    char *beg_host = host;
+
+    if (host == NULL)
+        fatal("%s: failed to strdup host", __func__);
     
     size_t n_colon  = 0;
     size_t host_len = strlen(host);
@@ -110,6 +116,8 @@ parse_sockaddr(struct sockaddr_storage *sock, char *host, const in_port_t __port
         sin6->sin6_family = AF_INET6;
         sin6->sin6_port   = htons(port);
     }
+
+    free(beg_host);
 
 	return NULL;
 }

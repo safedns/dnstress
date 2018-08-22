@@ -359,7 +359,7 @@ print_stats(struct rstats_t *stats)
 
         fprintf(stderr, "    %s─ %s\n", angle, addr_repr); // address representation
         fprintf(stderr, "    %s    ├─── UDP\n", stick);
-        fprintf(stderr, "    %s    │    ├── TRANSMITTING INFO\n", stick);
+        fprintf(stderr, "    %s    │    ├── NETWORK\n", stick);
         fprintf(stderr, "    %s    │    │   ├─ queries:   %zu\n", stick, udp_ent->n_sent);
         fprintf(stderr, "    %s    │    │   ├─ responses: %zu\n", stick, udp_ent->n_recv);
         fprintf(stderr, "    %s    │    │   └─ loss:      %.2f%%\n", stick, udp_tr_loss);
@@ -372,7 +372,7 @@ print_stats(struct rstats_t *stats)
         fprintf(stderr, "    %s    │        └─ errors:    %.2f%%\n", stick, udp_rc_loss);
         fprintf(stderr, "    %s    │               \n", stick);
         fprintf(stderr, "    %s    └─── TCP\n", stick);
-        fprintf(stderr, "    %s         ├── TRANSMITTING INFO\n", stick);
+        fprintf(stderr, "    %s         ├── NETWORK\n", stick);
         fprintf(stderr, "    %s         │   ├─ queries:   %zu\n", stick, tcp_ent->n_sent);
         fprintf(stderr, "    %s         │   ├─ responses: %zu\n", stick, tcp_ent->n_recv);
         fprintf(stderr, "    %s         │   └─ loss:      %.2f%%\n", stick, tcp_tr_loss);
@@ -384,14 +384,6 @@ print_stats(struct rstats_t *stats)
         fprintf(stderr, "    %s             ├─ servfail:  %zu\n", stick, tcp_ent->n_servfail);
         fprintf(stderr, "    %s             └─ errors:    %.2f%%\n", stick, tcp_rc_loss);
         fprintf(stderr, "    %s                   \n", stick);
-        // fprintf(stderr, "      ==== ERRORS ====\n");
-        // fprintf(stderr, "        [+] NO ERRORS:       %zu\n", stats->n_noerr);
-        // fprintf(stderr, "        [-] CORRUPTED:       %zu\n", stats->n_corrupted);
-        // fprintf(stderr, "        [-] FORMAT ERROR:    %zu\n", stats->n_formerr);
-        // fprintf(stderr, "        [-] SERVER FAILURE:  %zu\n", stats->n_servfail);
-        // fprintf(stderr, "        [-] NAME ERROR:      %zu\n", stats->n_nxdomain);
-        // fprintf(stderr, "        [-] NOT IMPLEMENTED: %zu\n", stats->n_notimpl);
-        // fprintf(stderr, "        [-] REFUSED:         %zu\n", stats->n_refused);
     }
     fprintf(stderr, "\n");
 }
