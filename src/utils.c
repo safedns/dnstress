@@ -6,7 +6,9 @@
 #include "network.h"
 #include "log.h"
 
-int get_addrfamily(char *addr) {
+int
+get_addrfamily(char *addr)
+{
     int family = 0;
     struct addrinfo hint, *res = NULL;
     memset(&hint, 0, sizeof(hint));
@@ -24,12 +26,16 @@ int get_addrfamily(char *addr) {
     return family;
 }
 
-int randint(size_t up_bound) {
+int
+randint(size_t up_bound)
+{
     srand(time(NULL));
     return rand() % up_bound;
 }
 
-void * xmalloc(size_t size) {
+void *
+xmalloc(size_t size)
+{
 	void * result = malloc(size);
 	if (result == NULL)
 		fatal("malloc error");
@@ -37,30 +43,40 @@ void * xmalloc(size_t size) {
 	return result;
 }
 
-void * xmalloc_0(size_t size) {
+void *
+xmalloc_0(size_t size)
+{
     void * result = xmalloc(size);
 	memset(result, 0, size);
 	return result;
 }
 
-bool is_negative_int(char *str) {
+bool
+is_negative_int(char *str)
+{
     char *ptr;
     long long ret = strtoll(str, &ptr, 10);
     
     return ret < 0;
 }
 
-bool is_file(char *str) {
+bool
+is_file(char *str)
+{
     /* TODO: implement this function */
     return false;
 }
 
-bool is_server_available(struct _saddr *server) {
+bool
+is_server_available(struct _saddr *server)
+{
     /* TODO: implement this function */
     return true;
 }
 
-const char * type2str(servant_type_t type) {
+const char *
+type2str(servant_type_t type)
+{
     switch (type) {
         case UDP_TYPE:
             return UDP;
@@ -71,7 +87,9 @@ const char * type2str(servant_type_t type) {
     }
 }
 
-int read_file(const char *filename, char **content, size_t *content_size) {
+int
+read_file(const char *filename, char **content, size_t *content_size)
+{
     if (filename == NULL)     return null_filename;
     if (*content == NULL)     return null_content;
     if (content_size == NULL) return null_content_size;

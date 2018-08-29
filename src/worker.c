@@ -8,6 +8,11 @@
 #include "udp.h"
 #include "tcp.h"
 
+#define TIME_STEP 500000000L
+
+#define UDP_RUN_COUNT 1
+#define TCP_RUN_COUNT 10
+
 static bool
 udp_mode_b(request_mode_t mode) {
     return (mode == UDP_VALID || mode == UDP_NONVALID || mode == SHUFFLE);
@@ -87,7 +92,7 @@ void
 worker_run(void *arg)
 {
     struct worker_t * worker = (struct worker_t *) arg;
-    struct timespec tim = { 0, 50000000L };
+    struct timespec tim = { 0, TIME_STEP };
 
     /* infinitive loop of sending dns requests */
     while (true) {
@@ -98,18 +103,22 @@ worker_run(void *arg)
         }
 
         if (tcp_mode_b(worker->mode)) {
-            for (size_t i = 0; i < worker->tcp_serv_count; i++) {
-                /* sending DNS requests */
-                tcp_servant_run(&worker->tcp_servants[i]);
-                // send_tcp_query(&worker->tcp_servants[i]);
+            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++) {
+                for (size_t i = 0; i < worker->tcp_serv_count; i++) {
+                    /* sending DNS requests */
+                    tcp_servant_run(&worker->tcp_servants[i]);
+                    // send_tcp_query(&worker->tcp_servants[i]);
+                }
             }
         }
 
         if (udp_mode_b(worker->mode)) {
-            for (size_t i = 0; i < worker->udp_serv_count; i++) {
-                /* sending DNS requests */
-                udp_servant_run(&worker->udp_servants[i]);
-                // udp_servant_run(&worker->udp_servants[i]);
+            for (size_t _ = 0; _ < UDP_RUN_COUNT; _++) {
+                for (size_t i = 0; i < worker->udp_serv_count; i++) {
+                    /* sending DNS requests */
+                    udp_servant_run(&worker->udp_servants[i]);
+                    // udp_servant_run(&worker->udp_servants[i]);
+                }
             }
         }
         pthread_mutex_unlock(&worker->lock);
