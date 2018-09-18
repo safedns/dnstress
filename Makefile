@@ -2,7 +2,7 @@ PREFIX = ${DESTDIR}/usr
 BINDIR = ${PREFIX}/sbin
 BINDIR_ALT = ${PREFIX}/bin
 
-LIBS = libevent libcrypto libbsd libldns
+LIBS = libevent libbsd libldns
 
 CFLAGS = -Wall -D_GNU_SOURCE `pkg-config --cflags ${LIBS}`
 LDFLAGS = -Wl,--as-needed `pkg-config --libs ${LIBS}`
