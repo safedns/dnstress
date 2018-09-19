@@ -106,7 +106,7 @@ As you can see, `help` is self-documented. You need to just specify desired opti
 $ ./dnstress --mode shuffle
 
 
-Enter Ctrl+C to close dnstress
+Enter Ctrl+C to stop dnstress
 
 [+] process workers are starting...
 
@@ -114,11 +114,10 @@ proc-worker: 0 | starting dnstress...
 proc-worker: 1 | starting dnstress...
 ```
 
-To close dnstress, you need to enter `Ctrl+C`. After this, all collected statistics will be printed on the screen. For instance, this can be:
+After you stop `dnstress`, all collected statistics will be printed on the screen. For example, this can be:
 
 ```sh
    STRESS STATISTIC
-
     ├─ 127.0.0.2
     │    ├─── UDP
     │    │    ├── NETWORK
@@ -177,7 +176,7 @@ To close dnstress, you need to enter `Ctrl+C`. After this, all collected statist
 
 ## Where are logs
 
-All logs are stored in syslog. Thus, you can explore them using the next command:
+All logs are stored in syslog. Thus, you can observe them in runtime using the next command:
 
 ```sh
 tail -f /var/log/syslog | grep dnstress
@@ -195,7 +194,7 @@ These libraries are necessary for building:
 
 ## Report Problems or Request for New Features
 
-If you find a problem/bug or something, write an issue about this problem. Also, if you think that a feature will be a nice addition to `dnstress`, do the same -- write an issue and we will try to add your requested feature as soon as possible.
+If you find any problem or bug, submit an issue about this problem. Also, if you think that a feature will be a nice addition to `dnstress`, do the same -- submit an issue and we will try to add your requested feature as soon as possible.
 
 ## TODO
 

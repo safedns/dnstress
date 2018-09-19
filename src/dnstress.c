@@ -400,7 +400,7 @@ main(int argc, char **argv)
         if (socketpair(AF_UNIX, SOCK_STREAM, 0, pipes[i].proc_fd) < 0)
             fatal("failed to create socketpair");
 
-    fprintf(stderr, "Enter Ctrl+C to close dnstress\n\n");
+    fprintf(stderr, "Enter Ctrl+C to stop dnstress\n\n");
 
     for (size_t i = 0; i < config->workers_count; i++) {
         pid_t pid = fork();
