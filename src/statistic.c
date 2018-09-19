@@ -326,7 +326,7 @@ print_stats(struct rstats_t *stats)
     char *angle = NULL;
     
     fprintf(stderr, "\n");
-    fprintf(stderr, "   STRESS STATISTIC\n\n");
+    fprintf(stderr, "   STRESS STATISTIC\n");
     
     for (size_t i = 0; i < stats->servs_count; i++) {
         if (i < stats->servs_count - 1) {

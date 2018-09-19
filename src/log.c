@@ -8,7 +8,9 @@
 
 static int out;
 
-static void __log(int prio, const char *msg, va_list ap) {
+static void
+__log(int prio, const char *msg, va_list ap)
+{
     char *nmsg = NULL;
 
 	if (out) {
@@ -25,7 +27,9 @@ static void __log(int prio, const char *msg, va_list ap) {
 	}
 }
 
-void log_init(const char *name, int __out) {
+void
+log_init(const char *name, int __out)
+{
     out = __out;
     if (!out) {
         tzset();
@@ -33,7 +37,9 @@ void log_init(const char *name, int __out) {
     }
 }
 
-void log_info(const char *msg, ...) {
+void
+log_info(const char *msg, ...)
+{
     va_list ap;
 
 	va_start(ap, msg);
@@ -41,7 +47,9 @@ void log_info(const char *msg, ...) {
 	va_end(ap);
 }
 
-void log_warn(const char *msg, ...) {
+void
+log_warn(const char *msg, ...)
+{
     va_list ap;
 
 	va_start(ap, msg);
@@ -49,7 +57,9 @@ void log_warn(const char *msg, ...) {
 	va_end(ap);
 }
 
-void log_debug(const char *msg, ...) {
+void
+log_debug(const char *msg, ...)
+{
     va_list ap;
 
 	va_start(ap, msg);
@@ -57,7 +67,9 @@ void log_debug(const char *msg, ...) {
 	va_end(ap);
 }
 
-void fatal(const char *msg, ...) {
+void
+fatal(const char *msg, ...)
+{
     va_list ap;
 
 	va_start(ap, msg);

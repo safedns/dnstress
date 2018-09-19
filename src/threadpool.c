@@ -3,7 +3,9 @@
 #include "threadpool.h"
 #include "log.h"
 
-int thread_pool_free(thread_pool_t *tpool) {
+int
+thread_pool_free(thread_pool_t *tpool)
+{
     if (tpool == NULL || tpool->active > 0) return -1;
     
     if (tpool->workers) {
@@ -22,7 +24,9 @@ int thread_pool_free(thread_pool_t *tpool) {
     return 0;
 }
 
-static void * thread_pool_thread(void *_tpool) {
+static void *
+thread_pool_thread(void *_tpool)
+{
     if (_tpool == NULL)
         fatal("%s: null thread pool pointer", __func__);
     
@@ -59,7 +63,9 @@ static void * thread_pool_thread(void *_tpool) {
     return (NULL);
 }
 
-thread_pool_t * thread_pool_init(size_t thread_count, size_t queue_size) {
+thread_pool_t *
+thread_pool_init(size_t thread_count, size_t queue_size)
+{
     if (queue_size <= 0 || queue_size > QUEUE_SIZE || thread_count <= 0 || thread_count > MAX_THREADS) return NULL;
 
     thread_pool_t *tpool = (thread_pool_t *) malloc(sizeof(thread_pool_t));
@@ -95,7 +101,9 @@ thread_pool_t * thread_pool_init(size_t thread_count, size_t queue_size) {
     return tpool;
 }
 
-int thread_pool_add(thread_pool_t *tpool, void (* work)(void *), void *args) {
+int
+thread_pool_add(thread_pool_t *tpool, void (* work)(void *), void *args)
+{
     int err_code = 0;
     
     if (tpool == NULL || work == NULL) return thread_pool_error;
@@ -120,7 +128,9 @@ exit_add:
     return err_code;
 }
 
-int thread_pool_kill(thread_pool_t *tpool, int killtype) {
+int
+thread_pool_kill(thread_pool_t *tpool, int killtype)
+{
     int err_code = 0;
 
     if (tpool == NULL) return thread_pool_error;

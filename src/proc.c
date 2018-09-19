@@ -70,7 +70,8 @@ proc_transmit_rstats(int proc_fd, const struct rstats_t *stats)
 /**
  * Obtains data from proc_fd and converts it to a rstats_t object
 */
-ssize_t proc_obtain_rstats(int proc_fd, struct rstats_t *stats)
+ssize_t
+proc_obtain_rstats(int proc_fd, struct rstats_t *stats)
 {
     /**
      * save some rstats_t fields to restore them

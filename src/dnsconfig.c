@@ -12,7 +12,10 @@
 #include "network.h"
 #include "log.h"
 
-static void init_domain(struct dnsconfig_t *config, size_t index, char * key, char *value) {
+static void
+init_domain(struct dnsconfig_t *config, size_t index,
+    char * key, char *value)
+{
     char *ptr = NULL;
     
     if (strcmp(key, DOM_NAME) == 0) {
@@ -25,7 +28,9 @@ static void init_domain(struct dnsconfig_t *config, size_t index, char * key, ch
         fatal("unknown domain's field");
 }
 
-static void validate_config(struct dnsconfig_t *config) {
+static void
+validate_config(struct dnsconfig_t *config)
+{
     size_t valid = 0, nonvalid = 0;
 
     for (size_t i = 0; i < config->queries_count; i++) {
@@ -122,8 +127,10 @@ parse_sockaddr(struct sockaddr_storage *sock, char *__host, const in_port_t __po
 	return NULL;
 }
 
-static void process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens, 
-        char *content, char *obj, size_t *index) {
+static void
+process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens, 
+    char *content, char *obj, size_t *index)
+{
     
     size_t __index = *index;
     
@@ -169,8 +176,10 @@ static void process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens,
     *index = __index;
 }
 
-static void process_workers(struct dnsconfig_t *config, jsmntok_t * tokens, 
-        char *content, char *obj, size_t *index) {
+static void
+process_workers(struct dnsconfig_t *config, jsmntok_t * tokens, 
+    char *content, char *obj, size_t *index)
+{
 
     char *ptr = NULL;
 
@@ -187,10 +196,14 @@ static void process_workers(struct dnsconfig_t *config, jsmntok_t * tokens,
     config->workers_count = wcount;
     if (wcount >= MAX_WCOUNT)
         config->workers_count = MAX_WCOUNT;
+    if (wcount == 0)
+        config->workers_count = 1;
 }
 
-static void process_domains(struct dnsconfig_t *config, jsmntok_t *tokens,
-        char *content, char *obj, size_t *index) {
+static void
+process_domains(struct dnsconfig_t *config, jsmntok_t *tokens,
+    char *content, char *obj, size_t *index)
+{
 
     size_t __index = *index;
     
@@ -227,7 +240,10 @@ static void process_domains(struct dnsconfig_t *config, jsmntok_t *tokens,
     *index = __index;
 }
 
-static int init_config(struct dnsconfig_t *config, char *content, jsmntok_t *tokens, int count) {
+static int
+init_config(struct dnsconfig_t *config, char *content,
+    jsmntok_t *tokens, int count)
+{
     if (config == NULL)  return null_config;
     if (content == NULL) return null_content_error;
     if (tokens == NULL)  return null_tokens_error;
@@ -251,12 +267,16 @@ static int init_config(struct dnsconfig_t *config, char *content, jsmntok_t *tok
     return 0;
 }
 
-struct dnsconfig_t * dnsconfig_create(void) {
+struct dnsconfig_t *
+dnsconfig_create(void)
+{
     struct dnsconfig_t * config = xmalloc_0(sizeof(struct dnsconfig_t));
     return config;
 }
 
-void dnsconfig_free(struct dnsconfig_t *config) {
+void
+dnsconfig_free(struct dnsconfig_t *config)
+{
     if (config == NULL) return;
 
     for (size_t i = 0; i < config->addrs_count; i++) {
@@ -278,7 +298,9 @@ void dnsconfig_free(struct dnsconfig_t *config) {
     free(config);
 }
 
-int parse_config(struct dnsconfig_t *config, char *filename) {
+int
+parse_config(struct dnsconfig_t *config, char *filename)
+{
     if (config == NULL)   return null_config;
     if (filename == NULL) return null_filename;
     
