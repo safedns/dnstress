@@ -261,8 +261,6 @@ process_ttl(struct dnsconfig_t *config, const jsmntok_t *tokens,
     
     if (ttl >= MAX_TTL)
         config->ttl = MAX_TTL;
-    if (ttl == 0)
-        config->ttl = MIN_TTL;
 }
 
 static int

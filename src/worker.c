@@ -94,8 +94,24 @@ worker_run(void *arg)
     struct worker_t * worker = (struct worker_t *) arg;
     struct timespec tim = { 0, TIME_STEP };
 
+    struct dnsconfig_t *config = worker->config;
+
+    clock_t start_time, cur_time;
+    size_t time_elapsed = 0;
+    size_t ttl = config->ttl;
+
+    start_time = clock();
+
     /* infinitive loop of sending dns requests */
     while (true) {
+        cur_time = clock();
+        time_elapsed = (cur_time - start_time) / CLOCKS_PER_SEC;
+
+        if (time_elapsed >= 1) {
+            start_time = clock();
+            /* TODO: count average number or requests per second */
+        }
+
         pthread_mutex_lock(&worker->lock);
         if (!worker->active) {
             pthread_mutex_unlock(&worker->lock);

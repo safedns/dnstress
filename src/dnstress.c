@@ -139,6 +139,8 @@ master_timeout_cb(evutil_socket_t fd, short events, void *arg)
 {
     struct __mst *mst = arg;
     
+    log_warn("master: timeout");
+
     master_close_workers(mst);
 	event_base_loopbreak(mst->evb);
 }
@@ -246,8 +248,10 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
 
     timerclear(&tv);
     tv.tv_sec = config->ttl;
-	if (event_add(ev_timeout, &tv) < 0)
-		fatal("failed to add timeout timer event");
+    if (config->ttl > 0) {
+        if (event_add(ev_timeout, &tv) < 0)
+            fatal("failed to add timeout timer event");
+    }
 
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
