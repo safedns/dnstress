@@ -38,9 +38,11 @@ typedef ssize_t (*sender_func)(ldns_buffer *qbin, int sockfd,
 
 typedef uint8_t * (*receiver_func)();
 
-int query_create(struct servant_t *servant);
-int reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size);
-int perform_query(struct servant_t *servant, sender_func send_query);
-int recv_reply(struct servant_t *servant, receiver_func recvr, servant_type_t type);
+int query_create(const struct servant_t *servant);
+int reply_process(const struct servant_t *servant, const uint8_t *answer,
+    const size_t answer_size);
+int perform_query(const struct servant_t *servant, sender_func send_query);
+int recv_reply(const struct servant_t *servant, receiver_func recvr,
+    const servant_type_t type);
 
 #endif /* __QUERY_H__ */

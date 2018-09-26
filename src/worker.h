@@ -31,7 +31,8 @@ struct worker_t {
     struct dnsconfig_t *config;
 };
 
-void worker_init(struct dnstress_t *dnstress, size_t index);
+void worker_init(struct dnstress_t *dnstress,
+    const size_t index);
 void worker_run(void *arg);
 void worker_clear(struct worker_t * worker);
 

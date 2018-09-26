@@ -66,6 +66,6 @@ void dnsconfig_free(struct dnsconfig_t * config);
 const char * parse_sockaddr(struct sockaddr_storage *sock,
     char *host, const in_port_t __port);
 
-int parse_config(struct dnsconfig_t *config, char *filename);
+int parse_config(struct dnsconfig_t *config, const char *filename);
 
 #endif /* __DNSCONFIG_H__ */

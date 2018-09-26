@@ -26,17 +26,17 @@ typedef enum {
 
 int get_addrfamily(char *addr);
 
-int randint(size_t up_bound);
+int randint(const size_t up_bound);
 
-void * xmalloc(size_t size);
-void * xmalloc_0(size_t size);
+void * xmalloc(const size_t size);
+void * xmalloc_0(const size_t size);
 
-bool is_negative_int(char *str);
-bool is_file(char *str); 
+bool is_negative_int(const char *str);
+bool is_file(const char *filename); 
 
-bool is_server_available(struct _saddr *server);
+bool is_server_available(const struct _saddr *server);
 
-const char * type2str(servant_type_t type);
+const char * type2str(const servant_type_t type);
 
 /* reads file and writes its data to content variable */
 int  read_file(const char *filename, char **content, size_t *content_size);

@@ -78,7 +78,8 @@ void jsmn_init(jsmn_parser *parser);
 int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
 		jsmntok_t *tokens, unsigned int num_tokens);
 
-int  get_object(jsmntok_t *tokens, char *content, size_t index, char *object);
+int  get_object(const jsmntok_t *tokens, const char *content,
+    const size_t index, char *object);
 
 #ifdef __cplusplus
 }

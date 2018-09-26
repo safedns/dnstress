@@ -315,7 +315,10 @@ void jsmn_init(jsmn_parser *parser) {
 	parser->toksuper = -1;
 }
 
-int get_object(jsmntok_t *tokens, char *content, size_t index, char *object) {
+int
+get_object(const jsmntok_t *tokens, const char *content,
+    const size_t index, char *object)
+{
     if (tokens == NULL)  return null_tokens_error;
     if (content == NULL) return null_content_error;
     if (object == NULL)  return null_object_error;

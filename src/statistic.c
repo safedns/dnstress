@@ -285,7 +285,7 @@ stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2)
 }
 
 struct serv_stats_t *
-get_serv_stats_servant(struct servant_t *servant)
+get_serv_stats_servant(const struct servant_t *servant)
 {
     struct rstats_t *stats = gstats(servant);
     struct serv_stats_t *sv_stats = get_serv_stats_addr(stats, servant->server);
@@ -310,7 +310,7 @@ calc_errs(const struct stats_entity_t *entity)
 }
 
 static float
-perc(size_t first, size_t second)
+perc(const size_t first, const size_t second)
 {
     if (first == 0)
         return 0;
@@ -320,7 +320,7 @@ perc(size_t first, size_t second)
 }
 
 void
-print_stats(struct rstats_t *stats)
+print_stats(const struct rstats_t *stats)
 {
     char *stick = NULL;
     char *angle = NULL;
@@ -389,7 +389,7 @@ print_stats(struct rstats_t *stats)
 }
 
 int
-inc_rsts_fld(struct serv_stats_t *sv_stats, size_t *field)
+inc_rsts_fld(const struct serv_stats_t *sv_stats, size_t *field)
 {
     if (sv_stats == NULL)
         return STATS_NULL;

@@ -48,8 +48,8 @@ struct __mst {
 };
 
 static void
-send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
-    size_t worker_id)
+send_stats_worker(const struct rstats_t *stats,
+    const struct process_pipes *pipes, const size_t worker_id)
 {
     int fd = pipes[worker_id].proc_fd[WORKER_PROC_FD];
 
@@ -59,7 +59,7 @@ send_stats_worker(struct rstats_t *stats, struct process_pipes *pipes,
 }
 
 static void
-recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
+recv_stats_master(const evutil_socket_t fd, struct rstats_t *stats)
 {
     struct rstats_t *r_stats = stats_create(stats->config);
 
@@ -72,7 +72,7 @@ recv_stats_master(evutil_socket_t fd, struct rstats_t *stats)
 }
 
 static void
-pworker_signal(evutil_socket_t signal, short events, void *arg)
+pworker_signal_cb(evutil_socket_t signal, short events, void *arg)
 {
     /* we don't want to exit because of this signal */
     if (signal == SIGPIPE)
@@ -85,7 +85,7 @@ pworker_signal(evutil_socket_t signal, short events, void *arg)
 }
 
 static void
-pworker_pipe(evutil_socket_t fd, short events, void *arg)
+pworker_pipe_cb(evutil_socket_t fd, short events, void *arg)
 {
     log_info("proc-worker: EOF on a master pipe, terminating");
     
@@ -94,7 +94,7 @@ pworker_pipe(evutil_socket_t fd, short events, void *arg)
 }
 
 static void
-master_signal(evutil_socket_t signal, short events, void *arg)
+master_signal_cb(evutil_socket_t signal, short events, void *arg)
 {
     struct __mst *mst = (struct __mst *) arg;
 	pid_t pid;
@@ -202,15 +202,15 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
     mst->pipes      = pipes;
     
     if ((ev_sigint = event_new(evb, SIGINT, 
-        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal_cb, mst)) == NULL)
         fatal("failed to create SIGINT master event");
     
     if ((ev_sigterm = event_new(evb, SIGTERM,
-        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal_cb, mst)) == NULL)
         fatal("failed to create SIGTERM master event");
 
     if ((ev_sigchld = event_new(evb, SIGCHLD,
-        EV_SIGNAL | EV_PERSIST, master_signal, mst)) == NULL)
+        EV_SIGNAL | EV_PERSIST, master_signal_cb, mst)) == NULL)
         fatal("failed to create SIGCHLD master event");
 
     if (event_add(ev_sigint, NULL) < 0)
@@ -243,7 +243,8 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
 }
 
 struct dnstress_t *
-dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
+dnstress_create(struct dnsconfig_t *config, const int fd,
+    const size_t proc_worker_id)
 {   
     if (config == NULL)
         fatal("%s: null pointer to config", __func__);
@@ -278,23 +279,23 @@ dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
 		fatal("failed to create event base");
     
     if ((dnstress->ev_sigint = event_new(dnstress->evb, SIGINT,
-	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+	    EV_SIGNAL | EV_PERSIST, pworker_signal_cb, dnstress)) == NULL)
 		fatal("failed to create SIGINT signal event");
 
 	if ((dnstress->ev_sigterm = event_new(dnstress->evb, SIGTERM,
-	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+	    EV_SIGNAL | EV_PERSIST, pworker_signal_cb, dnstress)) == NULL)
 		fatal("failed to create SIGTERM signal event");
     
     if ((dnstress->ev_sigsegv = event_new(dnstress->evb, SIGSEGV,
-	    EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+	    EV_SIGNAL | EV_PERSIST, pworker_signal_cb, dnstress)) == NULL)
 		fatal("failed to create SIGSEGV signal event");
 
     if ((dnstress->ev_sigpipe = event_new(dnstress->evb, SIGPIPE,
-        EV_SIGNAL | EV_PERSIST, pworker_signal, dnstress)) == NULL)
+        EV_SIGNAL | EV_PERSIST, pworker_signal_cb, dnstress)) == NULL)
         fatal("failed to create SIGPIPE signal event");
 
     if ((dnstress->ev_pipe = event_new(dnstress->evb, fd,
-        EV_READ | EV_PERSIST, pworker_pipe, dnstress)) == NULL)
+        EV_READ | EV_PERSIST, pworker_pipe_cb, dnstress)) == NULL)
         fatal("failed to create pipe event");
 
     if (event_add(dnstress->ev_pipe, NULL) < 0)
@@ -312,7 +313,7 @@ dnstress_create(struct dnsconfig_t *config, int fd, size_t proc_worker_id)
 }
 
 int
-dnstress_run(struct dnstress_t *dnstress)
+dnstress_run(const struct dnstress_t *dnstress)
 {
     if (event_add(dnstress->ev_sigint, NULL) < 0)
         fatal("failed to add SIGINT dnstress event");

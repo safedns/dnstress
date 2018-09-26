@@ -83,10 +83,10 @@ int stats_update_pkt(struct serv_stats_t *sv_stats, const ldns_pkt *pkt,
 
 void stats_update_stats(struct rstats_t *stats1, const struct rstats_t *stats2);
 
-struct serv_stats_t * get_serv_stats_servant(struct servant_t *servant);
+struct serv_stats_t * get_serv_stats_servant(const struct servant_t *servant);
 
-void print_stats(struct rstats_t *stats);
+void print_stats(const struct rstats_t *stats);
 
-int inc_rsts_fld(struct serv_stats_t *stats, size_t *field);
+int inc_rsts_fld(const struct serv_stats_t *stats, size_t *field);
 
 #endif /* __STATISTIC_H__ */

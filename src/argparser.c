@@ -22,7 +22,7 @@ static m_entity_t table[] = { { MODE,       V_MODE },
 #define N_ENTITY (sizeof(table) / sizeof(m_entity_t))
 
 static size_t
-get_value(char *key)
+get_value(const char *key)
 {
     for (size_t i = 0; i < N_ENTITY; i++) {
         if (strcmp(key, table[i].key) == 0) return table[i].value;
@@ -46,7 +46,8 @@ usage(void)
 }
 
 void
-parse_args(int argc, char **argv, struct dnsconfig_t *config)
+parse_args(const int argc, char **argv,
+    struct dnsconfig_t *config)
 {
     char *configfile = "./dnstress.json";
 

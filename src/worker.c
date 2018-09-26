@@ -14,12 +14,12 @@
 #define TCP_RUN_COUNT 10
 
 static bool
-udp_mode_b(request_mode_t mode) {
+udp_mode_b(const request_mode_t mode) {
     return (mode == UDP_VALID || mode == UDP_NONVALID || mode == SHUFFLE);
 }
 
 static bool
-tcp_mode_b(request_mode_t mode) {
+tcp_mode_b(const request_mode_t mode) {
     return (mode == TCP_VALID || mode == TCP_NONVALID || mode == SHUFFLE);
 }
 
@@ -47,7 +47,7 @@ servants_setup(struct worker_t *worker)
 }
 
 void
-worker_init(struct dnstress_t *dnstress, size_t index)
+worker_init(struct dnstress_t *dnstress, const size_t index)
 {
     if (dnstress == NULL)
         fatal("%s: null pointer to dnstress", __func__);

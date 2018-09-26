@@ -4,7 +4,7 @@
 #include "utils.h"
 
 void
-send_tcp_query(struct servant_t *servant)
+send_tcp_query(const struct servant_t *servant)
 {
     if (perform_query(servant, ldns_tcp_send_query) < 0)
         fatal("%s: error perfoming query", __func__);

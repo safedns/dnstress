@@ -4,7 +4,7 @@
 #include "utils.h"
 
 void
-send_udp_query(struct servant_t *servant)
+send_udp_query(const struct servant_t *servant)
 {
     if (perform_query(servant, ldns_udp_send_query) < 0)
         fatal("%s: error perfoming query", __func__);

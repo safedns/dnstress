@@ -13,8 +13,8 @@
 #include "log.h"
 
 static void
-init_domain(struct dnsconfig_t *config, size_t index,
-    char * key, char *value)
+init_domain(struct dnsconfig_t *config, const size_t index,
+    const char *key, const char *value)
 {
     char *ptr = NULL;
     
@@ -29,7 +29,7 @@ init_domain(struct dnsconfig_t *config, size_t index,
 }
 
 static void
-validate_config(struct dnsconfig_t *config)
+validate_config(const struct dnsconfig_t *config)
 {
     size_t valid = 0, nonvalid = 0;
 
@@ -57,7 +57,8 @@ validate_config(struct dnsconfig_t *config)
 }
 
 const char *
-parse_sockaddr(struct sockaddr_storage *sock, char *__host, const in_port_t __port)
+parse_sockaddr(struct sockaddr_storage *sock, char *__host,
+    const in_port_t __port)
 {
 	const char *errstr = NULL;
 
@@ -128,8 +129,8 @@ parse_sockaddr(struct sockaddr_storage *sock, char *__host, const in_port_t __po
 }
 
 static void
-process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens, 
-    char *content, char *obj, size_t *index)
+process_addrs(struct dnsconfig_t *config, const jsmntok_t * tokens, 
+    const char *content, char *obj, size_t *index)
 {
     
     size_t __index = *index;
@@ -177,8 +178,8 @@ process_addrs(struct dnsconfig_t *config, jsmntok_t * tokens,
 }
 
 static void
-process_workers(struct dnsconfig_t *config, jsmntok_t * tokens, 
-    char *content, char *obj, size_t *index)
+process_workers(struct dnsconfig_t *config, const jsmntok_t * tokens, 
+    const char *content, char *obj, size_t *index)
 {
 
     char *ptr = NULL;
@@ -201,8 +202,8 @@ process_workers(struct dnsconfig_t *config, jsmntok_t * tokens,
 }
 
 static void
-process_domains(struct dnsconfig_t *config, jsmntok_t *tokens,
-    char *content, char *obj, size_t *index)
+process_domains(struct dnsconfig_t *config, const jsmntok_t *tokens,
+    const char *content, char *obj, size_t *index)
 {
 
     size_t __index = *index;
@@ -240,9 +241,16 @@ process_domains(struct dnsconfig_t *config, jsmntok_t *tokens,
     *index = __index;
 }
 
+static void
+process_ttl(struct dnsconfig_t *config, const jsmntok_t *tokens,
+    const char *content, char *obj, size_t *index)
+{
+
+}
+
 static int
-init_config(struct dnsconfig_t *config, char *content,
-    jsmntok_t *tokens, int count)
+init_config(struct dnsconfig_t *config, const char *content,
+    const jsmntok_t *tokens, const size_t count)
 {
     if (config == NULL)  return null_config;
     if (content == NULL) return null_content_error;
@@ -299,7 +307,7 @@ dnsconfig_free(struct dnsconfig_t *config)
 }
 
 int
-parse_config(struct dnsconfig_t *config, char *filename)
+parse_config(struct dnsconfig_t *config, const char *filename)
 {
     if (config == NULL)   return null_config;
     if (filename == NULL) return null_filename;

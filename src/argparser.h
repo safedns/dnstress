@@ -27,6 +27,7 @@ struct m_entity_t {
 };
 
 void usage(void);
-void parse_args(int argc, char **argv, struct dnsconfig_t *config);
+void parse_args(const int argc, char **argv,
+    struct dnsconfig_t *config);
 
 #endif

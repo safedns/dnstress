@@ -11,7 +11,8 @@
 typedef void (*op_func)(evutil_socket_t, short, void *);
 
 static struct servant_t *
-get_servants(struct worker_t *worker, servant_type_t type)
+get_servants(const struct worker_t *worker,
+    const servant_type_t type)
 {    
     switch (type) {
         case TCP_TYPE:
@@ -28,7 +29,7 @@ get_servants(struct worker_t *worker, servant_type_t type)
 }
 
 static int
-get_sock_type(servant_type_t type)
+get_sock_type(const servant_type_t type)
 {
     switch (type) {
         case UDP_TYPE:
@@ -45,7 +46,7 @@ get_sock_type(servant_type_t type)
 }
 
 static op_func
-get_reply_callback(servant_type_t type)
+get_reply_callback(const servant_type_t type)
 {
     switch (type) {
         case TCP_TYPE:
@@ -62,7 +63,7 @@ get_reply_callback(servant_type_t type)
 }
 
 static void
-servant_timeout(evutil_socket_t fd, short events, void *arg)
+servant_timeout_cb(evutil_socket_t fd, short events, void *arg)
 {
     struct servant_t *servant = (struct servant_t *) arg;
     /* TODO: Implement servant's timeout event */
@@ -70,7 +71,8 @@ servant_timeout(evutil_socket_t fd, short events, void *arg)
 }
 
 int
-servant_init(struct worker_t *worker, size_t index, servant_type_t type)
+servant_init(struct worker_t *worker, const size_t index,
+    const servant_type_t type)
 {
     /* TODO: add error codes */
     if (worker == NULL)
@@ -83,7 +85,7 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
         return CLEANED_ERROR;
     
     struct timeval tv;
-    int set = 1;
+    // int set = 1;
 
     int sock_type = get_sock_type(type);
     struct _saddr *sstor      = NULL;
@@ -128,7 +130,7 @@ servant_init(struct worker_t *worker, size_t index, servant_type_t type)
         fatal("failed to create servant's event");
     
     if ((servant->ev_timeout = event_new(worker->dnstress->evb, -1, 0,
-        servant_timeout, servant)))
+        servant_timeout_cb, servant)))
     
     timerclear(&tv);
     tv.tv_sec = SERV_TIMEOUT;
@@ -177,19 +179,19 @@ servant_clear(struct servant_t *servant)
 }
 
 void
-tcp_servant_run(struct servant_t *servant)
+tcp_servant_run(const struct servant_t *servant)
 {
     send_tcp_query(servant);
 }
 
 void
-udp_servant_run(struct servant_t *servant)
+udp_servant_run(const struct servant_t *servant)
 {
     send_udp_query(servant);       
 }
 
 struct rstats_t *
-gstats(struct servant_t *servant)
+gstats(const struct servant_t *servant)
 {
     if (servant == NULL)
         fatal("%s: null pointer to servant", __func__);

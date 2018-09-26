@@ -27,14 +27,14 @@ get_addrfamily(char *addr)
 }
 
 int
-randint(size_t up_bound)
+randint(const size_t up_bound)
 {
     srand(time(NULL));
     return rand() % up_bound;
 }
 
 void *
-xmalloc(size_t size)
+xmalloc(const size_t size)
 {
 	void * result = malloc(size);
 	if (result == NULL)
@@ -44,7 +44,7 @@ xmalloc(size_t size)
 }
 
 void *
-xmalloc_0(size_t size)
+xmalloc_0(const size_t size)
 {
     void * result = xmalloc(size);
 	memset(result, 0, size);
@@ -52,7 +52,7 @@ xmalloc_0(size_t size)
 }
 
 bool
-is_negative_int(char *str)
+is_negative_int(const char *str)
 {
     char *ptr;
     long long ret = strtoll(str, &ptr, 10);
@@ -61,21 +61,21 @@ is_negative_int(char *str)
 }
 
 bool
-is_file(char *str)
+is_file(const char *filename)
 {
     /* TODO: implement this function */
     return false;
 }
 
 bool
-is_server_available(struct _saddr *server)
+is_server_available(const struct _saddr *server)
 {
     /* TODO: implement this function */
     return true;
 }
 
 const char *
-type2str(servant_type_t type)
+type2str(const servant_type_t type)
 {
     switch (type) {
         case UDP_TYPE:

@@ -51,8 +51,8 @@ enum {
 };
 
 struct dnstress_t * dnstress_create(struct dnsconfig_t *config, 
-    int fd, size_t proc_worker_id);
-int dnstress_run(struct dnstress_t *dnstress);
+    const int fd, const size_t proc_worker_id);
+int dnstress_run(const struct dnstress_t *dnstress);
 int dnstress_free(struct dnstress_t *dnstress);
 
 #endif /* __DNSTRESS_H__ */

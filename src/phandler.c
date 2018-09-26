@@ -5,13 +5,13 @@
 #define SEND_TRIES 5
 
 static struct query_t *
-__random_query(struct dnsconfig_t *config)
+__random_query(const struct dnsconfig_t *config)
 {
     return &config->queries[randint(config->queries_count)];
 }
 
 static struct query_t *
-get_random_query(struct dnsconfig_t *config)
+get_random_query(const struct dnsconfig_t *config)
 {
     struct query_t *query = NULL;
     switch (config->mode) {
@@ -33,7 +33,8 @@ get_random_query(struct dnsconfig_t *config)
 }
 
 static int
-query_init_inner_bf(struct dnsconfig_t *config, ldns_buffer *buffer)
+query_init_inner_bf(const struct dnsconfig_t *config,
+    ldns_buffer *buffer)
 {
     if (config == NULL) return CONFIG_NULL;
     if (buffer == NULL) return BUFFER_NULL;
@@ -67,7 +68,8 @@ query_init_inner_bf(struct dnsconfig_t *config, ldns_buffer *buffer)
 }
 
 static int
-query_init_inner(struct dnsconfig_t *config, ldns_buffer *buffer)
+query_init_inner(const struct dnsconfig_t *config,
+    ldns_buffer *buffer)
 {
     if (config == NULL) return CONFIG_NULL;
     if (buffer == NULL) return BUFFER_NULL;
@@ -108,7 +110,7 @@ ret:
 
 /* creates a query inside of servant's buffer */
 int
-query_create(struct servant_t *servant)
+query_create(const struct servant_t *servant)
 {
     if (servant->buffer == NULL)
         return BUFFER_NULL;
@@ -125,7 +127,7 @@ query_create(struct servant_t *servant)
 }
 
 int
-perform_query(struct servant_t *servant, sender_func send_query)
+perform_query(const struct servant_t *servant, sender_func send_query)
 {
     if (servant == NULL)         return SERVANT_NULL;
     if (servant->server == NULL) return SERVER_NULL;
@@ -156,7 +158,9 @@ perform_query(struct servant_t *servant, sender_func send_query)
 }
 
 int
-recv_reply(struct servant_t *servant, receiver_func recvr, servant_type_t type) {
+recv_reply(const struct servant_t *servant,
+    receiver_func recvr, const servant_type_t type)
+{
     if (servant == NULL)
         return SERVANT_NULL;
 
@@ -194,7 +198,8 @@ recv_reply(struct servant_t *servant, receiver_func recvr, servant_type_t type) 
 }
 
 int
-reply_process(struct servant_t *servant, uint8_t *answer, size_t answer_size)
+reply_process(const struct servant_t *servant,
+    const uint8_t *answer, const size_t answer_size)
 {
     if (servant == NULL)
         return SERVANT_NULL;
