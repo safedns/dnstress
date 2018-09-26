@@ -181,7 +181,6 @@ static void
 process_workers(struct dnsconfig_t *config, const jsmntok_t * tokens, 
     const char *content, char *obj, size_t *index)
 {
-
     char *ptr = NULL;
 
     if (tokens[*index].type != JSMN_PRIMITIVE)
@@ -190,11 +189,12 @@ process_workers(struct dnsconfig_t *config, const jsmntok_t * tokens,
     get_object(tokens, content, *index, obj);
     
     if (is_negative_int(obj))
-        fatal("workers count have to be a positive number");
-    
+        fatal("workers count has to be a positive number");
     
     size_t wcount = strtoull(obj, &ptr, 10);
+    
     config->workers_count = wcount;
+    
     if (wcount >= MAX_WCOUNT)
         config->workers_count = MAX_WCOUNT;
     if (wcount == 0)
@@ -245,7 +245,24 @@ static void
 process_ttl(struct dnsconfig_t *config, const jsmntok_t *tokens,
     const char *content, char *obj, size_t *index)
 {
+    char *ptr = NULL;
 
+    if (tokens[*index].type != JSMN_PRIMITIVE)
+        fatal("error in the config file: primitive expected");
+
+    get_object(tokens, content, *index, obj);
+    
+    if (is_negative_int(obj))
+        fatal("ttl has to be a positive number");
+    
+    size_t ttl = strtoull(obj, &ptr, 10);
+    
+    config->ttl = ttl;
+    
+    if (ttl >= MAX_TTL)
+        config->ttl = MAX_TTL;
+    if (ttl == 0)
+        config->ttl = MIN_TTL;
 }
 
 static int
@@ -269,6 +286,9 @@ init_config(struct dnsconfig_t *config, const char *content,
         } else if (tokens[i].type == JSMN_STRING && strcmp(obj, DOMAINS_TOK) == 0) {
             i++;
             process_domains(config, tokens, content, obj, &i);
+        } else if (tokens[i].type == JSMN_STRING && strcmp(obj, TTL_TOK) == 0) {
+            i++;
+            process_ttl(config, tokens, content, obj, &i);
         } else
             fatal("unexpected token in the config file");
     }

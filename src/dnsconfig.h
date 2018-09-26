@@ -25,10 +25,14 @@ typedef enum {
 
 #define MAX_WCOUNT 10
 
+#define MAX_TTL 864000 /* 10 days */
+#define MIN_TTL 5   
+
 /* json configuration file fields */
 #define ADDRS_TOK   "addrs"
 #define WORKERS_TOK "workers"
 #define DOMAINS_TOK "queries"
+#define TTL_TOK     "ttl"
 
 /* domain's fields in the configuration file */
 #define DOM_NAME    "dname"
@@ -58,6 +62,8 @@ struct dnsconfig_t {
 
     struct query_t *queries;
     size_t queries_count;
+
+    size_t ttl; /* in seconds; 0 is a special case (endless stressing) */
 };
 
 struct dnsconfig_t * dnsconfig_create(void);

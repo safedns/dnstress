@@ -94,11 +94,23 @@ pworker_pipe_cb(evutil_socket_t fd, short events, void *arg)
 }
 
 static void
+master_close_workers(struct __mst *mst)
+{
+    int status = 0;
+    
+    for (size_t i = 0; i < mst->pids_count; i++) {
+        /* FIXME: infinite waiting while killing a child process */
+        if (kill(mst->pids[i], SIGINT) < 0)
+            fatal("error while killing child process");
+        waitpid(mst->pids[i], &status, 0);
+    }
+}
+
+static void
 master_signal_cb(evutil_socket_t signal, short events, void *arg)
 {
     struct __mst *mst = (struct __mst *) arg;
 	pid_t pid;
-    int status;
 
     log_warn("master: got signal: %d", signal);
 
@@ -118,19 +130,22 @@ master_signal_cb(evutil_socket_t signal, short events, void *arg)
 		    break;
 	}
 
-    for (size_t i = 0; i < mst->pids_count; i++) {
-        /* FIXME: infinite waiting while killing a child process */
-        if (kill(mst->pids[i], SIGINT) < 0)
-            fatal("error while killing child process");
-        waitpid(mst->pids[i], &status, 0);
-    }
-
+    master_close_workers(mst);
 	event_base_loopbreak(mst->evb);
 }
 
 static void
-pworker(struct dnsconfig_t *config, int proc_worker_id,
-    struct process_pipes *pipes)
+master_timeout_cb(evutil_socket_t fd, short events, void *arg)
+{
+    struct __mst *mst = arg;
+    
+    master_close_workers(mst);
+	event_base_loopbreak(mst->evb);
+}
+
+static void
+pworker(struct dnsconfig_t *config, const int proc_worker_id,
+    const struct process_pipes *pipes)
 {
     signal(SIGPIPE, SIG_IGN);
 
@@ -162,7 +177,7 @@ pworker(struct dnsconfig_t *config, int proc_worker_id,
     fprintf(stderr, "proc-worker: %d | starting dnstress...\n", proc_worker_id);
 
     dnstress_run(dnstress);
-    
+
     send_stats_worker(dnstress->stats, pipes, proc_worker_id);
     
     if (dnstress_free(dnstress) < 0)
@@ -179,6 +194,8 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
 {
     signal(SIGPIPE, SIG_IGN);
 
+    struct timeval tv;
+
     struct __mst *mst = alloca(sizeof(struct __mst));
     memset(mst, 0, sizeof(struct __mst));
     
@@ -186,6 +203,7 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
     struct event *ev_sigint  = NULL;
     struct event *ev_sigterm = NULL;
     struct event *ev_sigchld = NULL;
+    struct event *ev_timeout = NULL;
 
     struct rstats_t *stats = stats_create(config);
 
@@ -213,6 +231,10 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
         EV_SIGNAL | EV_PERSIST, master_signal_cb, mst)) == NULL)
         fatal("failed to create SIGCHLD master event");
 
+    if ((ev_timeout = event_new(evb, -1,
+        EV_PERSIST, master_timeout_cb, mst)) == NULL)
+		fatal("failed to create timeout timer event");
+
     if (event_add(ev_sigint, NULL) < 0)
         fatal("failed to add SIGINT master event");
 
@@ -221,6 +243,11 @@ master(struct dnsconfig_t *config, struct process_pipes *pipes,
 
     if (event_add(ev_sigchld, NULL) < 0)
         fatal("failed to add SIGCHLD master event");
+
+    timerclear(&tv);
+    tv.tv_sec = config->ttl;
+	if (event_add(ev_timeout, &tv) < 0)
+		fatal("failed to add timeout timer event");
 
     if (event_base_dispatch(evb) < 0)
         fatal("fatal to dispatch master event base");
@@ -321,11 +348,11 @@ dnstress_run(const struct dnstress_t *dnstress)
     if (event_add(dnstress->ev_sigterm, NULL) < 0)
         fatal("failed to add SIGTERM dnstress event");
 
-    // if (event_add(dnstress->ev_sigsegv, NULL) < 0)
-    //     fatal("failed to add SIGSEGV dnstress event");
-
     if (event_add(dnstress->ev_sigpipe, NULL) < 0)
         fatal("failed to add SIGPIPE dnstress event");
+
+    // if (event_add(dnstress->ev_sigsegv, NULL) < 0)
+    //     fatal("failed to add SIGSEGV dnstress event");
 
     /* put all works in a queue */
     for (size_t i = 0; i < dnstress->workers_count; i++) {

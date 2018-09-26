@@ -126,6 +126,8 @@ worker_run(void *arg)
         if (nanosleep(&tim , NULL) < 0)
             log_warn("%s: failed to nanosleep", __func__);
     }
+    
+    /* FIXME: wait for responses */
 }
 
 void
