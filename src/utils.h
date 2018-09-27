@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include "log.h"
 #include "servant.h"
@@ -38,7 +39,9 @@ bool is_server_available(const struct _saddr *server);
 
 const char * type2str(const servant_type_t type);
 
+double time_elapsed(clock_t t);
+
 /* reads file and writes its data to content variable */
-int  read_file(const char *filename, char **content, size_t *content_size);
+int read_file(const char *filename, char **content, size_t *content_size);
 
 #endif

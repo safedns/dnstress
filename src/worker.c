@@ -8,10 +8,10 @@
 #include "udp.h"
 #include "tcp.h"
 
-#define TIME_STEP 500000000L
+#define TIME_STEP 50000000L
 
-#define UDP_RUN_COUNT 1
-#define TCP_RUN_COUNT 10
+#define UDP_RUN_COUNT 4
+#define TCP_RUN_COUNT 4
 
 static bool
 udp_mode_b(const request_mode_t mode) {
@@ -45,6 +45,40 @@ servants_setup(struct worker_t *worker)
     log_info("worker: %d | servants: [0-%d]/UDP",
             worker->index, worker->udp_serv_count);
 }
+
+bool
+worker_active(struct worker_t *worker)
+{
+    bool active = false;
+    
+    if (pthread_mutex_lock(&worker->lock) < 0)
+        fatal("%s: failed to lock", __func__);
+    active = worker->active;
+    if (pthread_mutex_unlock(&worker->lock) < 0)
+        fatal("%s: failed to unlock", __func__);
+    return active;
+}
+
+void
+worker_activate(struct worker_t *worker)
+{
+    if (pthread_mutex_lock(&worker->lock) < 0)
+        fatal("%s: failed to lock", __func__);
+    worker->active = true;
+    if (pthread_mutex_unlock(&worker->lock) < 0)
+        fatal("%s: failed to unlock", __func__);
+}
+
+void
+worker_deactivate(struct worker_t *worker)
+{
+    if (pthread_mutex_lock(&worker->lock) < 0)
+        fatal("%s: failed to lock", __func__);
+    worker->active = false;
+    if (pthread_mutex_unlock(&worker->lock) < 0)
+        fatal("%s: failed to unlock", __func__);
+}
+
 
 void
 worker_init(struct dnstress_t *dnstress, const size_t index)
@@ -85,69 +119,39 @@ worker_init(struct dnstress_t *dnstress, const size_t index)
     servants_setup(worker);
     log_info("servants are configured");
 
-    worker->active = true;
+    worker_activate(worker);
 }
 
 void
 worker_run(void *arg)
-{
+{    
     struct worker_t * worker = (struct worker_t *) arg;
     struct timespec tim = { 0, TIME_STEP };
 
-    struct dnsconfig_t *config = worker->config;
-
-    clock_t start_time, cur_time;
-    size_t time_elapsed = 0;
-    size_t ttl = config->ttl;
-
-    start_time = clock();
-
     /* infinitive loop of sending dns requests */
     while (true) {
-        cur_time = clock();
-        time_elapsed = (cur_time - start_time) / CLOCKS_PER_SEC;
-
-        if (time_elapsed >= 1) {
-            start_time = clock();
-            /* TODO: count average number or requests per second */
-        }
-
-        pthread_mutex_lock(&worker->lock);
-        if (!worker->active) {
-            pthread_mutex_unlock(&worker->lock);
+        if (!worker_active(worker))
             break;
-        }
 
-        if (tcp_mode_b(worker->mode)) {
-            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++) {
-                for (size_t i = 0; i < worker->tcp_serv_count; i++) {
+        if (tcp_mode_b(worker->mode))
+            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++)
+                for (size_t i = 0; i < worker->tcp_serv_count; i++)
                     /* sending DNS requests */
                     tcp_servant_run(&worker->tcp_servants[i]);
-                    // send_tcp_query(&worker->tcp_servants[i]);
-                }
-            }
-        }
 
-        if (udp_mode_b(worker->mode)) {
-            for (size_t _ = 0; _ < UDP_RUN_COUNT; _++) {
-                for (size_t i = 0; i < worker->udp_serv_count; i++) {
+        if (udp_mode_b(worker->mode))
+            for (size_t _ = 0; _ < UDP_RUN_COUNT; _++)
+                for (size_t i = 0; i < worker->udp_serv_count; i++)
                     /* sending DNS requests */
                     udp_servant_run(&worker->udp_servants[i]);
-                    // udp_servant_run(&worker->udp_servants[i]);
-                }
-            }
-        }
-        pthread_mutex_unlock(&worker->lock);
         
         if (nanosleep(&tim , NULL) < 0)
             log_warn("%s: failed to nanosleep", __func__);
     }
-    
-    /* FIXME: wait for responses */
 }
 
 void
-worker_clear(struct worker_t * worker)
+worker_clear(struct worker_t *worker)
 {
     for (size_t i = 0; i < worker->tcp_serv_count; i++) {
         if (servant_clear(&worker->tcp_servants[i]) < 0)
@@ -162,6 +166,8 @@ worker_clear(struct worker_t * worker)
     if (worker->tcp_servants != NULL) free(worker->tcp_servants);
     if (worker->udp_servants != NULL) free(worker->udp_servants);
 
+    worker_deactivate(worker);
+
     if (pthread_mutex_destroy(&worker->lock) != 0)
         fatal("%s: failed to destroy mutex", __func__);
 
@@ -170,6 +176,4 @@ worker_clear(struct worker_t * worker)
     worker->server       = NULL;
     worker->dnstress     = NULL;
     worker->config       = NULL;
-
-    worker->active = false;
 }

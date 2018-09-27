@@ -3,6 +3,13 @@
 #include "statistic.h"
 #include "utils.h"
 
+static ssize_t
+__send_query(ldns_buffer *qbin, int sockfd,
+    const struct sockaddr_storage *to, socklen_t tolen)
+{
+    return -1;   
+}
+
 void
 send_udp_query(const struct servant_t *servant)
 {

@@ -2,6 +2,7 @@
 
 #include "threadpool.h"
 #include "log.h"
+#include "utils.h"
 
 int
 thread_pool_free(thread_pool_t *tpool)
@@ -41,7 +42,8 @@ thread_pool_thread(void *_tpool)
             pthread_cond_wait(&(tpool->cond), &(tpool->lock));
 
         if ((tpool->shutdown == urgent_shutdown) ||
-            ((tpool->shutdown == complete_shutdown) && (queue->wcount == 0))) break;
+            ((tpool->shutdown == complete_shutdown) && (queue->wcount == 0)))
+            break;
 
         thread_pool_work_t work;
         work.task = queue->works[queue->head].task;
@@ -68,12 +70,13 @@ thread_pool_init(size_t thread_count, size_t queue_size)
 {
     if (queue_size <= 0 || queue_size > QUEUE_SIZE || thread_count <= 0 || thread_count > MAX_THREADS) return NULL;
 
-    thread_pool_t *tpool = (thread_pool_t *) malloc(sizeof(thread_pool_t));
+    thread_pool_t *tpool = (thread_pool_t *) xmalloc_0(sizeof(thread_pool_t));
     if (tpool == NULL) return NULL;
 
-    tpool->workers    = (pthread_t *)                 malloc(sizeof(pthread_t) * thread_count);
-    tpool->work_queue = (thread_pool_queue_t *)       malloc(sizeof(thread_pool_queue_t));
-    tpool->work_queue->works = (thread_pool_work_t *) malloc(sizeof(thread_pool_work_t) * queue_size);
+    tpool->workers    = xmalloc_0(sizeof(pthread_t) * thread_count);
+    tpool->work_queue = xmalloc_0(sizeof(thread_pool_queue_t));
+    
+    tpool->work_queue->works = xmalloc_0(sizeof(thread_pool_work_t) * queue_size);
 
     if (pthread_mutex_init(&(tpool->lock), NULL) != 0 || 
         pthread_cond_init( &(tpool->cond), NULL) != 0 ||
@@ -90,7 +93,9 @@ thread_pool_init(size_t thread_count, size_t queue_size)
     tpool->work_queue->wcount = 0;
 
     for (size_t i = 0; i < thread_count; i++) {
-        if (pthread_create(&(tpool->workers[i]), NULL, thread_pool_thread, (void *)tpool) != 0) {
+        if (pthread_create(&(tpool->workers[i]), NULL,
+            thread_pool_thread, (void *)tpool) != 0) {
+            
             thread_pool_kill(tpool, urgent_shutdown);
             return NULL;
         }
@@ -106,25 +111,35 @@ thread_pool_add(thread_pool_t *tpool, void (* work)(void *), void *args)
 {
     int err_code = 0;
     
-    if (tpool == NULL || work == NULL) return thread_pool_error;
-    if (pthread_mutex_lock(&(tpool->lock)) != 0) return thread_pool_lock_error;
+    if (tpool == NULL || work == NULL)
+        return thread_pool_error;
+    if (pthread_mutex_lock(&(tpool->lock)) != 0)
+        return thread_pool_lock_error;
 
     thread_pool_queue_t *queue = tpool->work_queue;
 
     size_t next = (queue->tail + 1) % queue->size;
 
-    if (queue->size == queue->wcount) { err_code = thread_pool_queue_full; goto exit_add; }
-    if (tpool->shutdown)              { err_code = thread_pool_shutdown;   goto exit_add; }
+    if (queue->size == queue->wcount) {
+        err_code = thread_pool_queue_full;
+        goto exit_add;
+    }
+    if (tpool->shutdown) {
+        err_code = thread_pool_shutdown;
+        goto exit_add;
+    }
 
     queue->works[queue->tail].task = work;
     queue->works[queue->tail].args = args;
     queue->tail = next;
     queue->wcount++;
 
-    if (pthread_cond_signal( &(tpool->cond)) != 0) err_code = thread_pool_lock_error;
+    if (pthread_cond_signal( &(tpool->cond)) != 0)
+        err_code = thread_pool_lock_error;
     
 exit_add:    
-    if (pthread_mutex_unlock(&(tpool->lock)) != 0) err_code = thread_pool_lock_error;
+    if (pthread_mutex_unlock(&(tpool->lock)) != 0)
+        err_code = thread_pool_lock_error;
     return err_code;
 }
 
@@ -134,9 +149,13 @@ thread_pool_kill(thread_pool_t *tpool, int killtype)
     int err_code = 0;
 
     if (tpool == NULL) return thread_pool_error;
-    if (pthread_mutex_lock(&(tpool->lock)) != 0) return thread_pool_lock_error;
+    if (pthread_mutex_lock(&(tpool->lock)) != 0)
+        return thread_pool_lock_error;
     
-    if (tpool->shutdown) { err_code = thread_pool_shutdown; goto exit; }
+    if (tpool->shutdown) {
+        err_code = thread_pool_shutdown;
+        goto exit;
+    }
 
     tpool->shutdown = killtype;
 
@@ -156,6 +175,7 @@ thread_pool_kill(thread_pool_t *tpool, int killtype)
     }
 
 exit:
-    if (err_code == 0) thread_pool_free(tpool);
+    if (err_code == 0)
+        thread_pool_free(tpool);
     return err_code;
 }

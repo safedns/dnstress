@@ -147,10 +147,9 @@ perform_query(const struct servant_t *servant, sender_func send_query)
         fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
             servant->worker_base->index, servant->index, 
             type2str(servant->type), sent);
-    }// else {
-    //     break;
-    // }
-    // }
+    }
+
+    // fprintf(stderr, "sent: %ld\n", sent);
 
     ldns_buffer_clear(servant->buffer);
 
@@ -163,12 +162,15 @@ recv_reply(const struct servant_t *servant,
 {
     if (servant == NULL)
         return SERVANT_NULL;
-
     if (type == CLEANED)
         return SERVANT_CLEANED;
-    
     if (!servant->active)
         return SERVANT_NON_ACTIVE;
+
+    struct timeval tv;
+    
+    timerclear(&tv);
+    tv.tv_sec = 1;
 
     for (size_t i = 0; i < RECV_TRIES; i++) {
         size_t   answer_size = 0;
@@ -176,7 +178,7 @@ recv_reply(const struct servant_t *servant,
 
         switch (type) {
             case TCP_TYPE:
-                answer = recvr(servant->fd, &answer_size);
+                answer = recvr(servant->fd, &answer_size, tv);
                 break;
             case UDP_TYPE:
                 answer = recvr(servant->fd, &answer_size, NULL, NULL);

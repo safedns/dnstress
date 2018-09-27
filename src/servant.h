@@ -53,7 +53,10 @@ int servant_init(struct worker_t *worker,
 int servant_clear(struct servant_t *servant);
 
 void tcp_servant_run(const struct servant_t *servant);
+void tcp_servant_wait(struct servant_t *servant);
+
 void udp_servant_run(const struct servant_t *servant);
+void udp_servant_wait(struct servant_t *servant);
 
 struct rstats_t *gstats(const struct servant_t *servant);
 

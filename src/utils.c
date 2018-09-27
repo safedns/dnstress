@@ -87,6 +87,13 @@ type2str(const servant_type_t type)
     }
 }
 
+double
+time_elapsed(clock_t t)
+{
+    clock_t cur_time = clock();
+    return (cur_time - t) / CLOCKS_PER_SEC;
+}
+
 int
 read_file(const char *filename, char **content, size_t *content_size)
 {

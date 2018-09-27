@@ -46,7 +46,7 @@ get_sock_type(const servant_type_t type)
 }
 
 static op_func
-get_reply_callback(const servant_type_t type)
+get_recv_callback(const servant_type_t type)
 {
     switch (type) {
         case TCP_TYPE:
@@ -84,7 +84,6 @@ servant_init(struct worker_t *worker, const size_t index,
     if (type == CLEANED)
         return CLEANED_ERROR;
     
-    struct timeval tv;
     // int set = 1;
 
     int sock_type = get_sock_type(type);
@@ -126,16 +125,16 @@ servant_init(struct worker_t *worker, const size_t index,
     }
 
     if ((servant->ev_recv = event_new(worker->dnstress->evb, servant->fd, 
-        EV_READ | EV_PERSIST, get_reply_callback(type), servant)) == NULL)
+        EV_READ | EV_PERSIST, get_recv_callback(type), servant)) == NULL)
         fatal("failed to create servant's event");
     
     if ((servant->ev_timeout = event_new(worker->dnstress->evb, -1, 0,
         servant_timeout_cb, servant)))
     
-    timerclear(&tv);
-    tv.tv_sec = SERV_TIMEOUT;
-    if (event_add(servant->ev_timeout, &tv) == -1)
-        fatal("failed to add servant's timeout event");
+    // timerclear(&tv);
+    // tv.tv_sec = SERV_TIMEOUT;
+    // if (event_add(servant->ev_timeout, &tv) == -1)
+    //     fatal("failed to add servant's timeout event");
     
     if (event_add(servant->ev_recv, NULL) == -1)
         fatal("failed to add servant's recv event");
@@ -181,13 +180,27 @@ servant_clear(struct servant_t *servant)
 void
 tcp_servant_run(const struct servant_t *servant)
 {
-    send_tcp_query(servant);
+    if (worker_active(servant->worker_base))
+        send_tcp_query(servant);
+}
+
+void
+tcp_servant_wait(struct servant_t *servant)
+{
+    recv_tcp_reply(servant->fd, 0, servant);
 }
 
 void
 udp_servant_run(const struct servant_t *servant)
 {
-    send_udp_query(servant);       
+    if (worker_active(servant->worker_base))
+        send_udp_query(servant);
+}
+
+void
+udp_servant_wait(struct servant_t *servant)
+{
+    recv_udp_reply(servant->fd, 0, servant);
 }
 
 struct rstats_t *

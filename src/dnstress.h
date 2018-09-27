@@ -32,6 +32,7 @@ struct dnstress_t {
     struct event *ev_sigsegv;
     struct event *ev_sigpipe;
     struct event *ev_pipe;
+    struct event *ev_timeout;
 
     size_t max_udp_servants;
     size_t max_tcp_servants;
