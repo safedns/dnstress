@@ -19,6 +19,9 @@
 
 #define MIN_WCOUNT 1
 
+#define RPS   "--rps"
+#define LDLVL "--ld-lvl"
+
 typedef struct m_entity_t m_entity_t;
 
 struct m_entity_t {
@@ -26,7 +29,6 @@ struct m_entity_t {
     size_t value;
 };
 
-void usage(void);
 void parse_args(const int argc, char **argv,
     struct dnsconfig_t *config);
 

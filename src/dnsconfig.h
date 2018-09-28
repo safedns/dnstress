@@ -53,6 +53,7 @@ struct _saddr {
 
 struct dnsconfig_t {
     char *configfile;
+    FILE *outstream;
 
     size_t addrs_count;
     struct _saddr *addrs;  /* addresses of dns servers */
@@ -64,6 +65,14 @@ struct dnsconfig_t {
     size_t queries_count;
 
     size_t ttl; /* in seconds; 0 is a special case (endless stressing) */
+
+    /**
+     * These options are mutually exclusive.
+     * So, further we will check if rps equals 0, then we use ld_lvl,
+     * and overwise.
+     */
+    uint16_t ld_lvl; /* load level. from 1 to 10 */
+    uint32_t rps;    /* requests per second */
 };
 
 struct dnsconfig_t * dnsconfig_create(void);

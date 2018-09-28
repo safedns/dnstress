@@ -16,12 +16,14 @@
 #define TCP_RUN_COUNT 4
 
 static bool
-udp_mode_b(const request_mode_t mode) {
+udp_mode_b(const request_mode_t mode)
+{
     return (mode == UDP_VALID || mode == UDP_NONVALID || mode == SHUFFLE);
 }
 
 static bool
-tcp_mode_b(const request_mode_t mode) {
+tcp_mode_b(const request_mode_t mode)
+{
     return (mode == TCP_VALID || mode == TCP_NONVALID || mode == SHUFFLE);
 }
 

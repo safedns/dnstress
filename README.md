@@ -77,6 +77,15 @@ Speify number of workers in the json config like that:
 
 There is some limitation on the number of workers: from 1 to 10
 
+### TTL
+`ttl` option allows you to specify the duration of a stressing (in seconds)
+
+```json
+"ttl": 20,
+```
+
+Of course, you still can stop `dnstress` in any time as well.
+
 ## How to build
 
 Before building `dnstress`, take a look at the [requirements](#requirements) section. When all libraries are installed, type the next in the terminal to build or rebuild `dnstress`:
