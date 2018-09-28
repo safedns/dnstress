@@ -27,7 +27,7 @@
 #include "proc.h"
 
 #define MAX_UDP_SERVANTS 20
-#define MAX_TCP_SERVANTS 5
+#define MAX_TCP_SERVANTS 20
 #define MAX_WORKERS      1000
 
 #define MAX_OPEN_FD 1000000
@@ -78,7 +78,6 @@ dnstress_workers_disable(const struct dnstress_t *dnstress)
     for (size_t i = 0; i < dnstress->workers_count; i++) {
         worker_deactivate(&dnstress->workers[i]);
     }
-    fprintf(stderr, "workers are disabled\n");
 }
 
 bool exit_msg_printed = false;
@@ -91,14 +90,13 @@ dnstress_evb_close(const struct dnstress_t *dnstress)
     dnstress_workers_disable(dnstress);
 
     if (!exit_msg_printed) {
-        fprintf(stderr, "proc-worker: %zu | Please, wait! dnstress is closing... (~4sec)\n",
+        fprintf(stderr, "proc-worker: %zu | Please, wait! dnstress is closing... (~5sec)\n",
             dnstress->proc_worker_id);
         exit_msg_printed = true;
     }
 
     timerclear(&tv);
-    tv.tv_sec  = 3;
-    tv.tv_usec = 200000;
+    tv.tv_sec  = 5;
     event_base_loopexit(dnstress->evb, &tv);
 }
 
@@ -177,7 +175,7 @@ master_close_workers(struct __mst *mst)
     for (size_t i = 0; i < mst->pids_count; i++) {
         /* FIXME: infinite waiting while killing a child process */
         if (kill(mst->pids[i], SIGINT) < 0)
-            log_warn("error while killing child process");
+            log_warn("failed to kill child process");
         waitpid(mst->pids[i], &status, 0);
     }
 }
@@ -298,8 +296,7 @@ dnstress_timeout_cb(evutil_socket_t fd, short events, void *arg)
 {
     struct dnstress_t *dnstress = arg;
 
-    log_warn("dnstress: ttl");
-    fprintf(stderr, "ttl\n");
+    log_warn("worker %zu | dnstress: ttl", dnstress->proc_worker_id);
 
     dnstress_evb_close(dnstress);
 }
@@ -312,7 +309,7 @@ dnstress_create(struct dnsconfig_t *config, const int fd,
         fatal("%s: null pointer to config", __func__);
     if (fd < 0)
         fatal("%s: invalid pipe fd", __func__);
-    if (proc_worker_id < 0 || proc_worker_id > 1)
+    if (proc_worker_id < 0)
         fatal("%s: invalid process worker id", __func__);
     
     struct dnstress_t *dnstress = xmalloc_0(sizeof(struct dnstress_t));
@@ -406,8 +403,6 @@ dnstress_run(const struct dnstress_t *dnstress)
     for (size_t i = 0; i < dnstress->workers_count; i++) {
         thread_pool_add(dnstress->pool, &worker_run, &(dnstress->workers[i]));
     }
-
-    fprintf(stderr, "dispatch\n");
 
     if (event_base_dispatch(dnstress->evb) < 0)
 		fatal("failed to dispatch dnstress event base");

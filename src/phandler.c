@@ -140,16 +140,8 @@ perform_query(const struct servant_t *servant, sender_func send_query)
     ssize_t sent = 0;
 
     /* try to transmit all data until it will be correctly sent */
-    // for (size_t i = 0; i < SEND_TRIES; i++) {
     sent = send_query(servant->buffer,
         servant->fd, &servant->server->addr, servant->server->len);
-    if (sent < 0) {
-        fatal("worker: %d | servant: %d/%s | sent %ld bytes", 
-            servant->worker_base->index, servant->index, 
-            type2str(servant->type), sent);
-    }
-
-    // fprintf(stderr, "sent: %ld\n", sent);
 
     ldns_buffer_clear(servant->buffer);
 

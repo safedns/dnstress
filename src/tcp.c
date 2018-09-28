@@ -45,7 +45,7 @@ __send_query(ldns_buffer *qbin, int sockfd,
         return -1;
     }
     if (total != datasize + 2)
-        return -1;
+        return -2;
 
     return total;
 }
@@ -58,14 +58,16 @@ send_tcp_query(const struct servant_t *servant)
     if (!servant->worker_base->active)
         return;
 
-    if ((sent = perform_query(servant, __send_query)) < 0)
-        fatal("%s: error perfoming query", __func__);
+    if ((sent = perform_query(servant, __send_query)) < 0) {
+        log_warn("%s: error perfoming query", __func__);
+        return;
+    }
     if (sent > 0) {
         struct serv_stats_t *sv_stats = get_serv_stats_servant(servant);
         inc_rsts_fld(sv_stats, &sv_stats->tcp_serv.n_sent);
     }
     
-    fprintf(stderr, "sent\n");    
+    // fprintf(stderr, "sent\n");    
     /* debug output */
     // fprintf(stderr, "%zu\r", stats->n_sent_tcp);
 }
@@ -79,5 +81,5 @@ recv_tcp_reply(evutil_socket_t fd, short events, void *arg)
 
     if (recv_reply(servant, ldns_tcp_read_wire_timeout, TCP_TYPE) < 0)
         fatal("%s: error while receiving reply", __func__);
-    fprintf(stderr, "recv: %zu\n", count++);
+    // fprintf(stderr, "recv: %zu\n", count++);
 }

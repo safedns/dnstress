@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
+#include <pthread.h>
 
 #include "worker.h"
 #include "utils.h"
@@ -8,9 +9,10 @@
 #include "udp.h"
 #include "tcp.h"
 
-#define TIME_STEP 50000000L
+#define TIME_STEP_UDP 4000000L
+#define TIME_STEP_TCP 5000000L
 
-#define UDP_RUN_COUNT 4
+#define UDP_RUN_COUNT 8
 #define TCP_RUN_COUNT 4
 
 static bool
@@ -122,22 +124,15 @@ worker_init(struct dnstress_t *dnstress, const size_t index)
     worker_activate(worker);
 }
 
-void
-worker_run(void *arg)
-{    
-    struct worker_t * worker = (struct worker_t *) arg;
-    struct timespec tim = { 0, TIME_STEP };
+static void *
+worker_run_udp(void *arg)
+{
+    struct worker_t *worker = arg;
+    struct timespec tim = { 0, TIME_STEP_UDP };
 
-    /* infinitive loop of sending dns requests */
     while (true) {
         if (!worker_active(worker))
             break;
-
-        if (tcp_mode_b(worker->mode))
-            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++)
-                for (size_t i = 0; i < worker->tcp_serv_count; i++)
-                    /* sending DNS requests */
-                    tcp_servant_run(&worker->tcp_servants[i]);
 
         if (udp_mode_b(worker->mode))
             for (size_t _ = 0; _ < UDP_RUN_COUNT; _++)
@@ -148,6 +143,48 @@ worker_run(void *arg)
         if (nanosleep(&tim , NULL) < 0)
             log_warn("%s: failed to nanosleep", __func__);
     }
+    pthread_exit(NULL);
+}
+
+static void *
+worker_run_tcp(void *arg)
+{
+    struct worker_t *worker = arg;
+    struct timespec tim = { 0, TIME_STEP_TCP };
+
+    while (true) {
+        if (!worker_active(worker))
+            break;
+
+        if (tcp_mode_b(worker->mode))
+            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++)
+                for (size_t i = 0; i < worker->tcp_serv_count; i++)
+                    /* sending DNS requests */
+                    tcp_servant_run(&worker->tcp_servants[i]);
+        
+        if (nanosleep(&tim , NULL) < 0)
+            log_warn("%s: failed to nanosleep", __func__);
+    }
+    pthread_exit(NULL);
+}
+
+void
+worker_run(void *arg)
+{    
+    struct worker_t * worker = (struct worker_t *) arg;
+
+    pthread_t udp_worker;
+    pthread_t tcp_worker;
+
+    if (pthread_create(&udp_worker, NULL, worker_run_udp, (void *) worker) != 0)
+        fatal("%s: failed to create udp worker thread");
+    if (pthread_create(&tcp_worker, NULL, worker_run_tcp, (void *) worker) != 0)
+        fatal("%s: failed to create tcp worker thread");
+
+    if (pthread_join(udp_worker, NULL) != 0)
+        fatal("%s: failed to join udp worker");
+    if (pthread_join(tcp_worker, NULL) != 0)
+        fatal("%s: failed to join udp worker");
 }
 
 void
