@@ -67,7 +67,6 @@ send_tcp_query(const struct servant_t *servant)
         inc_rsts_fld(sv_stats, &sv_stats->tcp_serv.n_sent);
     }
     
-    // fprintf(stderr, "sent\n");    
     /* debug output */
     // fprintf(stderr, "%zu\r", stats->n_sent_tcp);
 }
