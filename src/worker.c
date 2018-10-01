@@ -9,11 +9,65 @@
 #include "udp.h"
 #include "tcp.h"
 
-#define TIME_STEP_UDP 4000000L
-#define TIME_STEP_TCP 5000000L
+#define TIME_STEP_UDP 1000L
+#define TIME_STEP_TCP 1000L
 
-#define UDP_RUN_COUNT 8
-#define TCP_RUN_COUNT 4
+#define UDP_RUN_COUNT 10
+#define TCP_RUN_COUNT 10
+
+struct worker_arg_t {
+    struct worker_t *worker;
+    request_mode_t mode;
+    
+    int time_step;
+    size_t run_count;
+    
+    bool (*mode_b)(const request_mode_t);
+    void (*servant_run)(const struct servant_t *);
+};
+
+static struct worker_arg_t *
+worker_arg_new(struct worker_t *worker,
+               request_mode_t mode,
+               int time_step,
+               size_t run_count,
+               bool(*mode_b)(const request_mode_t),
+               void (*servant_run)(const struct servant_t *))
+{
+    struct worker_arg_t *worker_arg = xmalloc_0(sizeof(struct worker_arg_t));
+
+    if (worker_arg == NULL)  return NULL;
+    if (worker == NULL)      return NULL;
+    if (mode_b == NULL)      return NULL;
+    if (servant_run == NULL) return NULL;
+
+    worker_arg->worker      = worker;
+    worker_arg->mode        = mode;
+    worker_arg->time_step   = time_step;
+    worker_arg->run_count   = run_count;
+    worker_arg->mode_b      = mode_b;
+    worker_arg->servant_run = servant_run;
+
+    return worker_arg;
+}
+
+static int
+worker_arg_free(struct worker_arg_t *worker_arg)
+{
+    if (worker_arg == NULL)
+        return -1;
+
+    worker_arg->worker      = NULL;
+    worker_arg->mode        = 0;
+    worker_arg->time_step   = 0;
+    worker_arg->run_count   = 0;
+    worker_arg->mode_b      = NULL;
+    worker_arg->servant_run = NULL;
+
+    free(worker_arg);
+    
+    return 0;
+}
 
 static bool
 udp_mode_b(const request_mode_t mode)
@@ -28,7 +82,7 @@ tcp_mode_b(const request_mode_t mode)
 }
 
 static void 
-servants_setup(struct worker_t *worker)
+worker_servants_setup(struct worker_t *worker)
 {
     if (worker == NULL)
         fatal("%s: null pointer to a worker");
@@ -83,6 +137,45 @@ worker_deactivate(struct worker_t *worker)
         fatal("%s: failed to unlock", __func__);
 }
 
+/**
+ * Get exactly udp or tcp serv count.
+ *  If `shuffle` is specified, then it's considered as
+ *  an invalid mode
+ */
+ssize_t
+worker_serv_count(struct worker_t *worker, const request_mode_t mode)
+{
+    if (mode == SHUFFLE)
+        return -1;
+
+    if (tcp_mode_b(mode))
+        return worker->tcp_serv_count;
+    
+    if (udp_mode_b(mode))
+        return worker->udp_serv_count;
+
+    return 0;
+}
+
+/**
+ * Get exactly udp or tcp servants.
+ * If `shuffle` is specified, then it's considered as
+ * an invalid mode
+*/
+struct servant_t *
+worker_servants(struct worker_t *worker, const request_mode_t mode)
+{
+    if (mode == SHUFFLE)
+        return NULL;
+
+    if (tcp_mode_b(mode))
+        return worker->tcp_servants;
+    
+    if (udp_mode_b(mode))
+        return worker->udp_servants;
+
+    return NULL;
+}
 
 void
 worker_init(struct dnstress_t *dnstress, const size_t index)
@@ -120,54 +213,43 @@ worker_init(struct dnstress_t *dnstress, const size_t index)
     if (pthread_mutex_init(&worker->lock, NULL) != 0)
         fatal("%s: failed to create mutex", __func__);
 
-    servants_setup(worker);
+    worker_servants_setup(worker);
     log_info("servants are configured");
 
     worker_activate(worker);
 }
 
+
 static void *
-worker_run_udp(void *arg)
+__worker_run(void *__arg)
 {
-    struct worker_t *worker = arg;
-    struct timespec tim = { 0, TIME_STEP_UDP };
+    struct worker_arg_t *arg = __arg;
+
+    struct worker_t *worker = arg->worker;
+    struct timespec tim = { 0, arg->time_step };
+
+    size_t serv_count = worker_serv_count(worker, arg->mode);
+    struct servant_t *servants = worker_servants(worker, arg->mode);
 
     while (true) {
         if (!worker_active(worker))
             break;
-
-        if (udp_mode_b(worker->mode))
-            for (size_t _ = 0; _ < UDP_RUN_COUNT; _++)
-                for (size_t i = 0; i < worker->udp_serv_count; i++)
-                    /* sending DNS requests */
-                    udp_servant_run(&worker->udp_servants[i]);
         
+        if (arg->mode_b(worker->mode)) {
+            for (size_t _ = 0; _ < arg->run_count; _++) {
+                for (size_t i = 0; i < serv_count; i++) {
+                    /* sending DNS requests */
+                    arg->servant_run(&servants[i]);
+                }
+            }
+        }
+
+        /* TODO: add ld_lvl and rps handling */
         if (nanosleep(&tim , NULL) < 0)
             log_warn("%s: failed to nanosleep", __func__);
     }
     pthread_exit(NULL);
-}
-
-static void *
-worker_run_tcp(void *arg)
-{
-    struct worker_t *worker = arg;
-    struct timespec tim = { 0, TIME_STEP_TCP };
-
-    while (true) {
-        if (!worker_active(worker))
-            break;
-
-        if (tcp_mode_b(worker->mode))
-            for (size_t _ = 0; _ < TCP_RUN_COUNT; _++)
-                for (size_t i = 0; i < worker->tcp_serv_count; i++)
-                    /* sending DNS requests */
-                    tcp_servant_run(&worker->tcp_servants[i]);
-        
-        if (nanosleep(&tim , NULL) < 0)
-            log_warn("%s: failed to nanosleep", __func__);
-    }
-    pthread_exit(NULL);
+    return NULL;
 }
 
 void
@@ -178,15 +260,31 @@ worker_run(void *arg)
     pthread_t udp_worker;
     pthread_t tcp_worker;
 
-    if (pthread_create(&udp_worker, NULL, worker_run_udp, (void *) worker) != 0)
+    struct worker_arg_t *udp_arg = worker_arg_new(worker, UDP_VALID, TIME_STEP_UDP,
+                                                  UDP_RUN_COUNT, udp_mode_b,
+                                                  udp_servant_run);
+    struct worker_arg_t *tcp_arg = worker_arg_new(worker, TCP_VALID, TIME_STEP_TCP,
+                                                  TCP_RUN_COUNT, tcp_mode_b,
+                                                  tcp_servant_run);
+    if (udp_arg == NULL)
+        fatal("%s: failed to create udp worker_arg", __func__);
+    if (tcp_arg == NULL)
+        fatal("%s: failed to create tcp worker arg", __func__);
+
+    if (pthread_create(&udp_worker, NULL, __worker_run, (void *) udp_arg) != 0)
         fatal("%s: failed to create udp worker thread");
-    if (pthread_create(&tcp_worker, NULL, worker_run_tcp, (void *) worker) != 0)
+    if (pthread_create(&tcp_worker, NULL, __worker_run, (void *) tcp_arg) != 0)
         fatal("%s: failed to create tcp worker thread");
 
     if (pthread_join(udp_worker, NULL) != 0)
         fatal("%s: failed to join udp worker");
     if (pthread_join(tcp_worker, NULL) != 0)
         fatal("%s: failed to join udp worker");
+
+    if (worker_arg_free(udp_arg) < 0)
+        fatal("%s: failed to free udp worker arg", __func__);
+    if (worker_arg_free(tcp_arg) < 0)
+        fatal("%s: failed to free tcp worker arg", __func__);
 }
 
 void

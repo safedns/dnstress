@@ -35,6 +35,11 @@ bool worker_active(struct worker_t *worker);
 void worker_activate(struct worker_t *worker);
 void worker_deactivate(struct worker_t *worker);
 
+ssize_t worker_serv_count(struct worker_t *worker,
+    const request_mode_t mode);
+struct servant_t * worker_servants(struct worker_t *worker,
+    const request_mode_t mode);
+
 void worker_init(struct dnstress_t *dnstress,
     const size_t index);
 void worker_run(void *arg);

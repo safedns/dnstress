@@ -25,11 +25,11 @@ __send_query(ldns_buffer *qbin, int sockfd,
     while (total < datasize) {
         bytes = send(sockfd, sendbuf + total, bytesleft, 0);
         if (bytes < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN) {
-                fprintf(stderr, "this happened!!\n");
-                continue;
-            } else
-                break;
+            break;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN) {
+            //     continue;
+            // } else
+            //     break;
         }
         
         total     += bytes;
@@ -59,7 +59,7 @@ send_tcp_query(const struct servant_t *servant)
         return;
 
     if ((sent = perform_query(servant, __send_query)) < 0) {
-        log_warn("%s: error perfoming query", __func__);
+        // log_warn("%s: error perfoming query | sent %d", __func__, sent);
         return;
     }
     if (sent > 0) {
