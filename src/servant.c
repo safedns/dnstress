@@ -177,11 +177,12 @@ servant_clear(struct servant_t *servant)
     return 0;
 }
 
-void
+ssize_t
 tcp_servant_run(const struct servant_t *servant)
 {
     if (worker_active(servant->worker_base))
-        send_tcp_query(servant);
+        return send_tcp_query(servant);
+    return 0;
 }
 
 void
@@ -190,11 +191,12 @@ tcp_servant_wait(struct servant_t *servant)
     recv_tcp_reply(servant->fd, 0, servant);
 }
 
-void
+ssize_t
 udp_servant_run(const struct servant_t *servant)
 {
     if (worker_active(servant->worker_base))
-        send_udp_query(servant);
+        return send_udp_query(servant);
+    return 0;
 }
 
 void

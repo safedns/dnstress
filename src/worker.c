@@ -23,7 +23,7 @@ struct worker_arg_t {
     size_t run_count;
     
     bool (*mode_b)(const request_mode_t);
-    void (*servant_run)(const struct servant_t *);
+    ssize_t (*servant_run)(const struct servant_t *);
 };
 
 static struct worker_arg_t *
@@ -32,7 +32,7 @@ worker_arg_new(struct worker_t *worker,
                int time_step,
                size_t run_count,
                bool(*mode_b)(const request_mode_t),
-               void (*servant_run)(const struct servant_t *))
+               ssize_t (*servant_run)(const struct servant_t *))
 {
     struct worker_arg_t *worker_arg = xmalloc_0(sizeof(struct worker_arg_t));
 
@@ -217,16 +217,41 @@ worker_init(struct dnstress_t *dnstress, const size_t index)
     log_info("servants are configured");
 
     worker_activate(worker);
+
+    worker->start_time = clock();
 }
 
 
 static void *
-__worker_run(void *__arg)
+__worker_run_inner(void *__arg)
 {
     struct worker_arg_t *arg = __arg;
 
-    struct worker_t *worker = arg->worker;
-    struct timespec tim = { 0, arg->time_step };
+    clock_t cur_time = clock();
+    clock_t elapsed = 0;
+    size_t last_round_sent = 0;
+    
+    size_t constant = 0;
+
+    ssize_t ret = 0;
+
+    struct worker_t    *worker = arg->worker;
+    struct dnsconfig_t *config = worker->config;
+
+    if (!arg->mode_b(worker->mode)) {
+        pthread_exit(NULL);
+        return NULL;
+    }
+
+    if (dnsconfig_ld_lvl_enabled(config)) {
+        constant = (11 - config->ld_lvl);
+        
+        /* FIXME: make more meaningful constant */
+        for (size_t _ = 0; _ < 2; _++)
+            constant *= constant;
+    }
+
+    struct timespec tim = { 0, arg->time_step * constant };
 
     size_t serv_count = worker_serv_count(worker, arg->mode);
     struct servant_t *servants = worker_servants(worker, arg->mode);
@@ -235,18 +260,38 @@ __worker_run(void *__arg)
         if (!worker_active(worker))
             break;
         
+        if (dnsconfig_rps_enabled(config)) {        
+            elapsed = time_elapsed(cur_time);
+            
+            if (elapsed >= 1) {
+                cur_time = clock();
+                last_round_sent = 0;
+            }
+
+            if (last_round_sent >= config->rps)
+                continue;
+        }
+
         if (arg->mode_b(worker->mode)) {
             for (size_t _ = 0; _ < arg->run_count; _++) {
                 for (size_t i = 0; i < serv_count; i++) {
                     /* sending DNS requests */
-                    arg->servant_run(&servants[i]);
+                    if (dnsconfig_rps_enabled(config)) {
+                        if (last_round_sent + 1 <= config->rps) {
+                            ret = arg->servant_run(&servants[i]);
+                            if (ret > 0)
+                                last_round_sent++;
+                        }
+                    } else
+                        arg->servant_run(&servants[i]);
                 }
             }
         }
 
-        /* TODO: add ld_lvl and rps handling */
-        if (nanosleep(&tim , NULL) < 0)
-            log_warn("%s: failed to nanosleep", __func__);
+        if (dnsconfig_ld_lvl_enabled(config)) {
+            if (nanosleep(&tim , NULL) < 0)
+                log_warn("%s: failed to nanosleep", __func__);
+        }
     }
     pthread_exit(NULL);
     return NULL;
@@ -271,9 +316,11 @@ worker_run(void *arg)
     if (tcp_arg == NULL)
         fatal("%s: failed to create tcp worker arg", __func__);
 
-    if (pthread_create(&udp_worker, NULL, __worker_run, (void *) udp_arg) != 0)
+    if (pthread_create(&udp_worker, NULL,
+        __worker_run_inner, (void *) udp_arg) != 0)
         fatal("%s: failed to create udp worker thread");
-    if (pthread_create(&tcp_worker, NULL, __worker_run, (void *) tcp_arg) != 0)
+    if (pthread_create(&tcp_worker, NULL,
+        __worker_run_inner, (void *) tcp_arg) != 0)
         fatal("%s: failed to create tcp worker thread");
 
     if (pthread_join(udp_worker, NULL) != 0)

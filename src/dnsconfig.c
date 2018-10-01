@@ -324,6 +324,18 @@ dnsconfig_free(struct dnsconfig_t *config)
     free(config);
 }
 
+bool
+dnsconfig_rps_enabled(const struct dnsconfig_t *config)
+{
+    return (config->rps != 0) && (config->ld_lvl == 0);
+}
+
+bool
+dnsconfig_ld_lvl_enabled(const struct dnsconfig_t *config)
+{
+    return (config->ld_lvl != 0) && (config->rps == 0);
+}
+
 int
 parse_config(struct dnsconfig_t *config, const char *filename)
 {

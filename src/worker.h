@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "network.h"
 #include "servant.h"
@@ -12,7 +13,7 @@
 struct dnstress_t;
 
 struct worker_t {
-    bool active;
+    bool active; /* THREAD SHARED RESOURCE */
     
     pthread_mutex_t lock;
     
@@ -29,6 +30,8 @@ struct worker_t {
 
     struct dnstress_t  *dnstress;
     struct dnsconfig_t *config;
+
+    clock_t start_time;
 };
 
 bool worker_active(struct worker_t *worker);

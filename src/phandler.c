@@ -126,7 +126,7 @@ query_create(const struct servant_t *servant)
     return 0;
 }
 
-int
+ssize_t
 perform_query(const struct servant_t *servant, sender_func send_query)
 {
     if (servant == NULL)         return SERVANT_NULL;
@@ -148,7 +148,7 @@ perform_query(const struct servant_t *servant, sender_func send_query)
     return sent;
 }
 
-int
+ssize_t
 recv_reply(const struct servant_t *servant,
     receiver_func recvr, const servant_type_t type)
 {
@@ -160,13 +160,15 @@ recv_reply(const struct servant_t *servant,
         return SERVANT_NON_ACTIVE;
 
     struct timeval tv;
+    ssize_t answer_size = 0;
+    uint8_t *answer = NULL;
     
     timerclear(&tv);
     tv.tv_sec = 1;
 
     for (size_t i = 0; i < RECV_TRIES; i++) {
-        size_t   answer_size = 0;
-        uint8_t *answer      = NULL;
+        answer_size = 0;
+        answer = NULL;
 
         switch (type) {
             case TCP_TYPE:
@@ -188,7 +190,7 @@ recv_reply(const struct servant_t *servant,
         LDNS_FREE(answer);
         break;
     }
-    return 0;
+    return answer_size;
 }
 
 int

@@ -8,7 +8,7 @@
 #include "phandler.h"
 
 /* takes into account a sent packet in stats */
-void send_udp_query(const struct servant_t *servant);
+ssize_t send_udp_query(const struct servant_t *servant);
 
 /* takes into account a received packet in stats */
 void recv_udp_reply(evutil_socket_t fd, short events, void *arg);

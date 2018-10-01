@@ -10,21 +10,19 @@ __send_query(ldns_buffer *qbin, int sockfd,
     return -1;   
 }
 
-void
+ssize_t
 send_udp_query(const struct servant_t *servant)
 {
     ssize_t sent = 0;
     if ((sent = perform_query(servant, ldns_udp_send_query)) < 0) {
         // log_warn("%s: error perfoming query", __func__);
-        return;
+        return -1;
     }
-    if (sent > 0) {
+    if (sent >= 0) {
         struct serv_stats_t *sv_stats = get_serv_stats_servant(servant);
         inc_rsts_fld(sv_stats, &sv_stats->udp_serv.n_sent);
     }
-
-    /* debug output */
-    // fprintf(stderr, "%zu\r", stats->n_sent_udp);
+    return sent;
 }
 
 void

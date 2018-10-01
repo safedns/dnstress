@@ -1,7 +1,7 @@
 {
     "addrs": [ "127.0.0.2" ],
     "workers": 1,
-    "ttl": 60,
+    "ttl": 10,
     "queries": [
         { "dname": "google.com", "blocked": 0, "type": "AAAA" },
         { "dname": "vk.com",     "blocked": 1, "type": "A" }

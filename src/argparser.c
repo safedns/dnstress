@@ -144,10 +144,15 @@ parse_args(const int argc, char **argv,
     arguments.config  = "./dnstress.json";
     arguments.mode    = UDP_VALID;
     arguments.rps     = 0;
-    arguments.ld_lvl  = 5;
+    arguments.ld_lvl  = 0;
     arguments.verbose = 0;
 
     argp_parse(&argp, argc, argv, 0, 0, &arguments);
+
+    if (arguments.ld_lvl != 0 && arguments.rps != 0) {
+        fprintf(stderr, "[-] you have to specify either ld_lvl or rps, not both");
+        exit(1);
+    }
 
     if (arguments.outfile)
         outstream = fopen(arguments.outfile, "w");

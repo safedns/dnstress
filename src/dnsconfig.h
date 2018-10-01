@@ -78,6 +78,9 @@ struct dnsconfig_t {
 struct dnsconfig_t * dnsconfig_create(void);
 void dnsconfig_free(struct dnsconfig_t * config);
 
+bool dnsconfig_rps_enabled(const struct dnsconfig_t *config);
+bool dnsconfig_ld_lvl_enabled(const struct dnsconfig_t *config);
+
 const char * parse_sockaddr(struct sockaddr_storage *sock,
     char *host, const in_port_t __port);
 
