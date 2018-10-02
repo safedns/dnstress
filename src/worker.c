@@ -15,6 +15,8 @@
 #define UDP_RUN_COUNT 10
 #define TCP_RUN_COUNT 10
 
+#define EPS 1e-5
+
 struct worker_arg_t {
     struct worker_t *worker;
     request_mode_t mode;
@@ -221,6 +223,20 @@ worker_init(struct dnstress_t *dnstress, const size_t index)
     worker->start_time = clock();
 }
 
+static bool
+rps_valid_conditions(struct dnsconfig_t *config, size_t last_round_sent,
+    size_t overall_sent)
+{
+    if (last_round_sent + 1 <= config->rps) {
+        if (config->ttl != 0) {
+            if (overall_sent + 1 <= config->rps * config->ttl)
+                return true;
+            return false;
+        } else
+            return true;
+    }
+    return false;
+}
 
 static void *
 __worker_run_inner(void *__arg)
@@ -228,9 +244,11 @@ __worker_run_inner(void *__arg)
     struct worker_arg_t *arg = __arg;
 
     clock_t cur_time = clock();
-    clock_t elapsed = 0;
-    size_t last_round_sent = 0;
+    double elapsed = 0;
     
+    size_t last_round_sent = 0;
+    size_t overall_sent    = 0;
+
     size_t constant = 0;
 
     ssize_t ret = 0;
@@ -259,29 +277,28 @@ __worker_run_inner(void *__arg)
     while (true) {
         if (!worker_active(worker))
             break;
-        
-        if (dnsconfig_rps_enabled(config)) {        
-            elapsed = time_elapsed(cur_time);
-            
-            if (elapsed >= 1) {
-                cur_time = clock();
-                last_round_sent = 0;
-            }
-
-            if (last_round_sent >= config->rps)
-                continue;
-        }
 
         if (arg->mode_b(worker->mode)) {
             for (size_t _ = 0; _ < arg->run_count; _++) {
                 for (size_t i = 0; i < serv_count; i++) {
                     /* sending DNS requests */
                     if (dnsconfig_rps_enabled(config)) {
-                        if (last_round_sent + 1 <= config->rps) {
+                        if (rps_valid_conditions(config, last_round_sent, overall_sent)) {
                             ret = arg->servant_run(&servants[i]);
-                            if (ret > 0)
+                            if (ret > 0) {
                                 last_round_sent++;
+                                overall_sent++;
+                            }
                         }
+                        elapsed = time_elapsed(cur_time);
+                        
+                        if (elapsed + EPS >= 1) {
+                            cur_time = clock();
+                            last_round_sent = 0;
+                        }
+
+                        if (last_round_sent >= config->rps)
+                            continue;
                     } else
                         arg->servant_run(&servants[i]);
                 }

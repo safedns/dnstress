@@ -91,7 +91,7 @@ double
 time_elapsed(clock_t t)
 {
     clock_t cur_time = clock();
-    return (cur_time - t) / CLOCKS_PER_SEC;
+    return (double) (cur_time - t) / CLOCKS_PER_SEC;
 }
 
 int

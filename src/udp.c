@@ -18,7 +18,7 @@ send_udp_query(const struct servant_t *servant)
         // log_warn("%s: error perfoming query", __func__);
         return -1;
     }
-    if (sent >= 0) {
+    if (sent > 0) {
         struct serv_stats_t *sv_stats = get_serv_stats_servant(servant);
         inc_rsts_fld(sv_stats, &sv_stats->udp_serv.n_sent);
     }
