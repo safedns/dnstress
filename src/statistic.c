@@ -99,7 +99,7 @@ __stats_update_servant(struct rstats_t *stats,
 
     ldns_pkt *reply = NULL;
 
-    if (ldns_buffer2pkt_wire(&reply, servant->buffer) != LDNS_STATUS_OK)
+    if (ldns_buffer2pkt_wire(&reply, servant->reply_buffer) != LDNS_STATUS_OK)
         fatal("%s: failed to convert buffer to pkt wire", __func__);
     
     if (ldns_pkt_get_rcode(reply) == LDNS_RCODE_SERVFAIL)

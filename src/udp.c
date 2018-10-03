@@ -7,14 +7,29 @@ static ssize_t
 __send_query(ldns_buffer *qbin, int sockfd,
     const struct sockaddr_storage *to, socklen_t tolen)
 {
-    return -1;   
+    ssize_t bytes = 0;
+    size_t buffer_position = ldns_buffer_position(qbin);
+
+    if (buffer_position <= 0)
+        return -1;
+
+    bytes = sendto(sockfd, (void *) ldns_buffer_begin(qbin),
+        buffer_position, 0, (struct sockaddr *) to, tolen);
+
+    if (bytes <= 0)
+        return -1;
+    
+    if (bytes != buffer_position)
+        return -1;
+
+    return bytes;
 }
 
 ssize_t
 send_udp_query(const struct servant_t *servant)
 {
     ssize_t sent = 0;
-    if ((sent = perform_query(servant, ldns_udp_send_query)) < 0) {
+    if ((sent = perform_query(servant, __send_query)) < 0) { // ldns_udp_send_query
         // log_warn("%s: error perfoming query", __func__);
         return -1;
     }

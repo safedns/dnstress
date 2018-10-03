@@ -4,7 +4,7 @@ BINDIR_ALT = ${PREFIX}/bin
 
 LIBS = libevent libbsd libldns
 
-CFLAGS = -Wall -D_GNU_SOURCE `pkg-config --cflags ${LIBS}`
+CFLAGS = -Wall -D_GNU_SOURCE `pkg-config --cflags ${LIBS}` -g
 LDFLAGS = -Wl,--as-needed `pkg-config --libs ${LIBS}`
 
 OBJ_CLIENT = src/dnstress.o src/argparser.o src/utils.o \

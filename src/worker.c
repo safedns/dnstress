@@ -290,11 +290,13 @@ __worker_run_inner(void *__arg)
                                 overall_sent++;
                             }
                         }
+                        
                         elapsed = time_elapsed(cur_time);
                         
                         if (elapsed + EPS >= 1) {
                             cur_time = clock();
                             last_round_sent = 0;
+                            // fprintf(stderr, "overall sent: %zu\n", overall_sent);
                         }
 
                         if (last_round_sent >= config->rps)

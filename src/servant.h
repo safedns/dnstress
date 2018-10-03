@@ -44,7 +44,8 @@ struct servant_t {
     struct dnsconfig_t *config;
     struct worker_t    *worker_base;
 
-    ldns_buffer *buffer;
+    ldns_buffer *query_buffer;
+    ldns_buffer *reply_buffer;
 };
 
 /* FIXME: change function's arguments */

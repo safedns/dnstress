@@ -101,13 +101,17 @@ servant_init(struct worker_t *worker, const size_t index,
     
     servant->worker_base = worker;
 
-    servant->buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
+    servant->query_buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
+    servant->reply_buffer = ldns_buffer_new(LDNS_MAX_PACKETLEN);
 
     if (servant->fd < 0)
         fatal("%s: failed to create a servant's socket", __func__);
 
-    if (servant->buffer == NULL)
-        fatal("%s: failed to create ldns buffer", __func__);
+    if (servant->query_buffer == NULL)
+        fatal("%s: failed to create query ldns buffer", __func__);
+
+    if (servant->reply_buffer == NULL)
+        fatal("%s: failed to create reply ldns buffer", __func__);
 
 #ifdef SO_NOSIGPIPE
     setsockopt(servant->fd, SOL_SOCKET, SO_NOSIGPIPE, (void *)&set, sizeof(int));
@@ -145,8 +149,12 @@ servant_init(struct worker_t *worker, const size_t index,
 
 err_return:
     close(servant->fd);
-    ldns_buffer_free(servant->buffer);
-    servant->buffer = NULL;
+    
+    ldns_buffer_free(servant->query_buffer);
+    ldns_buffer_free(servant->reply_buffer);
+    
+    servant->query_buffer = NULL;
+    servant->reply_buffer = NULL;
     
     return CREATE_ERROR;
 }
@@ -160,13 +168,18 @@ servant_clear(struct servant_t *servant)
     close(servant->fd);
     event_free(servant->ev_recv);
 
-    if (servant->buffer != NULL)
-        ldns_buffer_free(servant->buffer);
+    if (servant->query_buffer != NULL)
+        ldns_buffer_free(servant->query_buffer);
+
+    if (servant->reply_buffer != NULL)
+        ldns_buffer_free(servant->reply_buffer);
     
     servant->config  = NULL;
     servant->server  = NULL;
     servant->ev_recv = NULL;
-    servant->buffer  = NULL;
+    
+    servant->query_buffer = NULL;
+    servant->reply_buffer = NULL;
     
     servant->index  = 0;
     servant->fd     = -1;

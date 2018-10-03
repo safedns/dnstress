@@ -39,9 +39,9 @@ __send_query(ldns_buffer *qbin, int sockfd,
     LDNS_FREE(sendbuf);
 
     if (bytes < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOTCONN) {
-            log_warn("EAGAIN | EWOULDBLOCK | ENOTCONN error");
-        }
+        if (errno == EPIPE)
+            return -3;
+
         return -1;
     }
     if (total != datasize + 2)

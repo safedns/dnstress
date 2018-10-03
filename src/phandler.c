@@ -50,6 +50,7 @@ query_init_inner_bf(const struct dnsconfig_t *config,
     if (dname == NULL)
         return DNAME_NULL;
 
+    memset(ldns_buffer_begin(buffer), 0, ldns_buffer_position(buffer));
     ldns_buffer_clear(buffer);
     // ldns_buffer_set_capacity(buffer, LDNS_MAX_PACKETLEN);
     // ldns_buffer_set_limit(buffer, LDNS_MAX_PACKETLEN);
@@ -100,8 +101,14 @@ query_init_inner(const struct dnsconfig_t *config,
 
     ldns_buffer_clear(buffer);
 
-    if (ldns_pkt2buffer_wire(buffer, query_pkt) != LDNS_STATUS_OK)
+    if (ldns_pkt2buffer_wire(buffer, query_pkt) != LDNS_STATUS_OK) {
         err_code = PKT2BUFFER_ERROR;
+        goto ret;
+    }
+
+    if (LDNS_QR_WIRE(ldns_buffer_begin(buffer))) {
+        fprintf(stderr, "WTFFF BROOOO\n");
+    }
 
 ret:
     ldns_pkt_free(query_pkt);
@@ -110,40 +117,38 @@ ret:
 
 /* creates a query inside of servant's buffer */
 int
-query_create(const struct servant_t *servant)
+query_create(const struct dnsconfig_t *config, ldns_buffer *buffer)
 {
-    if (servant->buffer == NULL)
+    if (buffer == NULL)
         return BUFFER_NULL;
-    if (servant->server == NULL)
-        return SERVER_NULL;
-    if (servant->config == NULL)
+    if (config == NULL)
         return CONFIG_NULL;
     
     // query_init_inner_bf(servant->config, servant->buffer);
-    if (query_init_inner(servant->config, servant->buffer) < 0)
+    if (query_init_inner(config, buffer) < 0)
         fatal("%s: error while initializing a query", __func__);
 
     return 0;
 }
+
+static size_t sent_count = 0;
 
 ssize_t
 perform_query(const struct servant_t *servant, sender_func send_query)
 {
     if (servant == NULL)         return SERVANT_NULL;
     if (servant->server == NULL) return SERVER_NULL;
-    if (servant->buffer == NULL) return BUFFER_NULL;
     if (!servant->active)        return SERVANT_NON_ACTIVE;
-
-    if (query_create(servant) < 0)
-        fatal("%s: error while creating a query", __func__);
+    if (servant->query_buffer == NULL) return BUFFER_NULL;
 
     ssize_t sent = 0;
 
-    /* try to transmit all data until it will be correctly sent */
-    sent = send_query(servant->buffer,
-        servant->fd, &servant->server->addr, servant->server->len);
+    if (query_create(servant->config, servant->query_buffer) < 0)
+        fatal("%s: error while creating a query", __func__);
 
-    ldns_buffer_clear(servant->buffer);
+    /* try to transmit all data until it will be correctly sent */
+    sent = send_query(servant->query_buffer,
+        servant->fd, &servant->server->addr, servant->server->len);
 
     return sent;
 }
@@ -172,7 +177,8 @@ recv_reply(const struct servant_t *servant,
 
         switch (type) {
             case TCP_TYPE:
-                answer = recvr(servant->fd, &answer_size, tv);
+                // answer = recvr(servant->fd, &answer_size, tv);
+                answer = recvr(servant->fd, &answer_size, NULL);
                 break;
             case UDP_TYPE:
                 answer = recvr(servant->fd, &answer_size, NULL, NULL);
@@ -199,7 +205,7 @@ reply_process(const struct servant_t *servant,
 {
     if (servant == NULL)
         return SERVANT_NULL;
-    if (servant->buffer == NULL)
+    if (servant->reply_buffer == NULL)
         return BUFFER_NULL;
     if (answer == NULL)
         return ANSWER_NULL;
@@ -222,11 +228,11 @@ reply_process(const struct servant_t *servant,
             fatal("%s: unknown servant type", __func__);
     }
 
-    ldns_buffer_clear(servant->buffer);
-    ldns_buffer_write(servant->buffer, answer, answer_size);
+    ldns_buffer_clear(servant->reply_buffer);
+    ldns_buffer_write(servant->reply_buffer, answer, answer_size);
 
     if (stats_update_buf(stats, servant->server,
-        servant->buffer, servant->type) < 0)
+        servant->reply_buffer, servant->type) < 0)
         return UPDATE_BUF_ERROR;
 
     return 0;

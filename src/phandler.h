@@ -18,7 +18,7 @@ struct query_t {
 };
 
 typedef enum {
-    BUFFER_NULL        = -1,
+    BUFFER_NULL         = -1,
     SERVER_NULL         = -2,
     CONFIG_NULL         = -3,
     SERVANT_NULL        = -4,
@@ -38,7 +38,7 @@ typedef ssize_t (*sender_func)(ldns_buffer *qbin, int sockfd,
 
 typedef uint8_t * (*receiver_func)();
 
-int query_create(const struct servant_t *servant);
+int query_create(const struct dnsconfig_t *config, ldns_buffer *buffer);
 int reply_process(const struct servant_t *servant, const uint8_t *answer,
     const size_t answer_size);
 ssize_t perform_query(const struct servant_t *servant, sender_func send_query);
