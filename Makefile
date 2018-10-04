@@ -18,7 +18,7 @@ CPPFLAGS = -DDEBUG
 all: dnstress
 
 dnstress: ${OBJ_CLIENT}
-	${CC} ${OBJ_CLIENT} ${LDFLAGS} -lpthread -o dnstress
+	${CC} ${OBJ_CLIENT} ${LDFLAGS} -lpthread -lm -o dnstress
 
 clean:
 	rm -f dnstress \

@@ -78,10 +78,10 @@ Speify number of workers in the json config like that:
 There is some limitation on the number of workers: from 1 to 10
 
 ### TTL
-`ttl` option allows you to specify the duration of a stressing (in seconds)
+`ttl` option allows you to specify the duration of a stressing (in seconds). If you specify `ttl` equals `0`, then is means endless loop of sending requests. In this case you should stop `dnstress` by yourself.
 
 ```json
-"ttl": 20,
+"ttl": 20
 ```
 
 Of course, you still can stop `dnstress` in any time as well.

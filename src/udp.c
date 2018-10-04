@@ -30,7 +30,7 @@ send_udp_query(const struct servant_t *servant)
 {
     ssize_t sent = 0;
     if ((sent = perform_query(servant, __send_query)) < 0) { // ldns_udp_send_query
-        // log_warn("%s: error perfoming query", __func__);
+        log_warn("%s: error perfoming query", __func__);
         return -1;
     }
     if (sent > 0) {

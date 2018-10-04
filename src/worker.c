@@ -2,6 +2,7 @@
 #include <string.h>
 #include <time.h>
 #include <pthread.h>
+#include <math.h>
 
 #include "worker.h"
 #include "utils.h"
@@ -9,8 +10,10 @@
 #include "udp.h"
 #include "tcp.h"
 
-#define TIME_STEP_UDP 1000L
-#define TIME_STEP_TCP 1000L
+#define TIME_INTERVAL_UDP 1000L
+#define TIME_INTERVAL_TCP 1000L
+
+#define MAX_TIME_INTERVAL 1000000000L
 
 #define UDP_RUN_COUNT 10
 #define TCP_RUN_COUNT 10
@@ -21,7 +24,7 @@ struct worker_arg_t {
     struct worker_t *worker;
     request_mode_t mode;
     
-    int time_step;
+    int time_interval;
     size_t run_count;
     
     bool (*mode_b)(const request_mode_t);
@@ -31,7 +34,7 @@ struct worker_arg_t {
 static struct worker_arg_t *
 worker_arg_new(struct worker_t *worker,
                request_mode_t mode,
-               int time_step,
+               int time_interval,
                size_t run_count,
                bool(*mode_b)(const request_mode_t),
                ssize_t (*servant_run)(const struct servant_t *))
@@ -45,7 +48,7 @@ worker_arg_new(struct worker_t *worker,
 
     worker_arg->worker      = worker;
     worker_arg->mode        = mode;
-    worker_arg->time_step   = time_step;
+    worker_arg->time_interval   = time_interval;
     worker_arg->run_count   = run_count;
     worker_arg->mode_b      = mode_b;
     worker_arg->servant_run = servant_run;
@@ -61,7 +64,7 @@ worker_arg_free(struct worker_arg_t *worker_arg)
 
     worker_arg->worker      = NULL;
     worker_arg->mode        = 0;
-    worker_arg->time_step   = 0;
+    worker_arg->time_interval   = 0;
     worker_arg->run_count   = 0;
     worker_arg->mode_b      = NULL;
     worker_arg->servant_run = NULL;
@@ -238,18 +241,36 @@ rps_valid_conditions(struct dnsconfig_t *config, size_t last_round_sent,
     return false;
 }
 
+static void
+set_time_interval(struct timespec *tim, uint16_t ld_lvl,
+    int time_interval)
+{
+    long ld_time_interval = 0;
+    
+    ld_time_interval = ld_lvl;
+
+    ld_time_interval = (3000 * ((long) pow(ld_lvl - 10, 4)) + 1000) * 10;
+    
+    if (ld_time_interval >= MAX_TIME_INTERVAL) {
+        tim->tv_sec = ld_time_interval / MAX_TIME_INTERVAL;
+        tim->tv_nsec = 0;
+    } else {
+        tim->tv_sec = 0;
+        tim->tv_nsec = ld_time_interval;
+        
+        fprintf(stderr, "inter: %ld\n", ld_time_interval);
+    }
+}
+
 static void *
 __worker_run_inner(void *__arg)
 {
     struct worker_arg_t *arg = __arg;
 
-    clock_t cur_time = clock();
-    double elapsed = 0;
+    struct timespec tim;
     
     size_t last_round_sent = 0;
     size_t overall_sent    = 0;
-
-    size_t constant = 0;
 
     ssize_t ret = 0;
 
@@ -261,15 +282,12 @@ __worker_run_inner(void *__arg)
         return NULL;
     }
 
-    if (dnsconfig_ld_lvl_enabled(config)) {
-        constant = (11 - config->ld_lvl);
-        
-        /* FIXME: make more meaningful constant */
-        for (size_t _ = 0; _ < 2; _++)
-            constant *= constant;
-    }
+    clock_t cur_time = clock();
+    double elapsed = 0;
 
-    struct timespec tim = { 0, arg->time_step * constant };
+    if (dnsconfig_ld_lvl_enabled(config)) {
+        set_time_interval(&tim, config->ld_lvl, arg->time_interval);
+    }
 
     size_t serv_count = worker_serv_count(worker, arg->mode);
     struct servant_t *servants = worker_servants(worker, arg->mode);
@@ -324,10 +342,10 @@ worker_run(void *arg)
     pthread_t udp_worker;
     pthread_t tcp_worker;
 
-    struct worker_arg_t *udp_arg = worker_arg_new(worker, UDP_VALID, TIME_STEP_UDP,
+    struct worker_arg_t *udp_arg = worker_arg_new(worker, UDP_VALID, TIME_INTERVAL_UDP,
                                                   UDP_RUN_COUNT, udp_mode_b,
                                                   udp_servant_run);
-    struct worker_arg_t *tcp_arg = worker_arg_new(worker, TCP_VALID, TIME_STEP_TCP,
+    struct worker_arg_t *tcp_arg = worker_arg_new(worker, TCP_VALID, TIME_INTERVAL_TCP,
                                                   TCP_RUN_COUNT, tcp_mode_b,
                                                   tcp_servant_run);
     if (udp_arg == NULL)
