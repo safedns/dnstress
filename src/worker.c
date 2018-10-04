@@ -258,7 +258,7 @@ set_time_interval(struct timespec *tim, uint16_t ld_lvl,
         tim->tv_sec = 0;
         tim->tv_nsec = ld_time_interval;
         
-        fprintf(stderr, "inter: %ld\n", ld_time_interval);
+        // fprintf(stderr, "inter: %ld\n", ld_time_interval);
     }
 }
 
