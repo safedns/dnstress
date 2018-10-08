@@ -141,7 +141,7 @@ A program that provides performance stress tests for defined DNS servers.
 As you can see, `help` is self-documented. You need to just specify desired options when you run `dnstress`. Defualt mode is `udp-valid`. Run it like this:
 
 ```sh
-$ ./dnstress --m shuffle -r 10000
+$ ./dnstress --m shuffle -r 1000
 
 
 Enter Ctrl+C to stop dnstress
