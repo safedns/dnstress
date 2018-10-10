@@ -13,7 +13,7 @@
 | `-c, --config=CONFIG` | File with a dnstress configuration (described in the section below) |
 | `-l, --ld-lvl=LD-LVL` | Load level of stressing. The value has to be from 1 to 10. You can not use it with `--rps` option |
 | `-r, --rps=RPS` | Number of requests per second. You can not use it with `--ld-lvl` option |
-| `-m, --mode=MODE` | Mode for traffic generating (udp-valid by default). Possible values are: <ul><li>udp-valid:    UDP valid packets</li><li>tcp-valid:    TCP valid packets</li><li>udp-nonvalid: UDP non-valid (to be blocked) packets</li><li>tcp-nonvalid: TCP non-valid (to be blocked) packets</li><li>shuffle: random packets generating</li></ul> |
+| `-m, --mode=MODE` | Traffic generation mode (udp-valid by default). Possible values are: <ul><li>udp-valid:    UDP valid packets</li><li>tcp-valid:    TCP valid packets</li><li>udp-nonvalid: UDP non-valid (to be blocked) packets</li><li>tcp-nonvalid: TCP non-valid (to be blocked) packets</li><li>shuffle: random packets generating</li></ul> |
 | `-o, --output=OUTFILE` | Output to OUTFILE instead of to standard output. __This option isn't availbale for now__ |
 | `-v, --verbose` | Produce verbose output. __This option isn't availbale for now__ |
 | ` -V, --version` | Print program version |
@@ -26,6 +26,7 @@ First of all, `dnstress` uses a configuration file to setup some of internal str
 {
     "addrs": [ "127.0.0.2", "127.0.0.3", "[2a0d:b600:166:ff00:e2d5:5eff:fe3a:a880]:1337" ],
     "workers": 2,
+    "ttl": 20,
     "queries": [
         { "dname": "google.com", "blocked": 0, "type": "AAAA" },
         { "dname": "vk.com",     "blocked": 1, "type": "A" }
