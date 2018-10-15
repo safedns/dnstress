@@ -37,7 +37,7 @@ struct arguments {
 
 static struct argp_option options[] = {
     { "verbose", 'v', 0,         0, "produce verbose output" },
-    { "mode",    'm', "MODE",    0, "mode for traffic generating (udp-valid by default)\n"
+    { "mode",    'm', "MODE",    0, "traffic generating mode (udp-valid by default)\n"
                                     "  • udp-valid:    UDP valid packets\n"
                                     "  • tcp-valid:    TCP valid packets\n"
                                     "  • udp-nonvalid: UDP non-valid (to be blocked) packets\n"
